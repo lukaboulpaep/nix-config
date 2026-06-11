@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, zen-browser, ... }:
 
 {
   imports =
@@ -59,7 +59,7 @@
     vim
     git
     lazygit
-    firefox
+    zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     wl-clipboard
     cliphist
   ];
