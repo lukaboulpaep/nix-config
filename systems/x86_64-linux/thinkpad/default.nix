@@ -1,16 +1,14 @@
-{ config, lib, pkgs, zen-browser, ... }:
+{ inputs, pkgs, zen-browser, ... }:
 
 {
-  imports =
-    [
-      ./hardware-configuration.nix
-    ];
+  imports = [
+    ./hardware-configuration.nix
+  ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
   networking.hostName = "thinkpad";
-
   networking.networkmanager.enable = true;
 
   time.timeZone = "Europe/Brussels";
@@ -24,7 +22,8 @@
 
   users.users.luka = {
     isNormalUser = true;
-    extraGroups = [ "wheel" ];
+    description = "Luka Boulpaep";
+    extraGroups = [ "wheel" "networkmanager" ];
   };
 
   programs.hyprland = {
@@ -39,6 +38,15 @@
 
   services.displayManager.defaultSession = "hyprland";
 
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+    extraSpecialArgs = {
+      inherit inputs zen-browser;
+    };
+    users.luka = import (../../../homes/x86_64-linux + "/luka@thinkpad");
+  };
+
   services.power-profiles-daemon.enable = true;
   services.upower.enable = true;
 
@@ -47,23 +55,17 @@
     "flakes"
   ];
 
-  programs.firefox.enable = true;
-
   environment.systemPackages = with pkgs; [
-    ghostty
-    waybar
-    wofi
-    hyprpaper
-    hyprlock
     brightnessctl
-    vim
-    git
-    lazygit
-    zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
-    wl-clipboard
     cliphist
+    git
+    hyprlock
+    hyprpaper
+    vim
+    waybar
+    wl-clipboard
+    wofi
   ];
 
   system.stateVersion = "26.05";
 }
-
