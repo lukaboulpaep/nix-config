@@ -28,6 +28,7 @@
 
   programs.hyprland = {
     enable = true;
+    withUWSM = true;
     xwayland.enable = true;
   };
 
@@ -36,7 +37,7 @@
     wayland.enable = true;
   };
 
-  services.displayManager.defaultSession = "hyprland";
+  services.displayManager.defaultSession = "hyprland-uwsm";
 
   home-manager = {
     useGlobalPkgs = true;
@@ -49,6 +50,13 @@
 
   services.power-profiles-daemon.enable = true;
   services.upower.enable = true;
+  services.logind.settings.Login = {
+    HandleLidSwitch = "lock";
+    # for docking
+    HandleLidSwitchExternalPower = "ignore";
+  };
+
+  security.pam.services.hyprlock = { };
 
   nix.settings.experimental-features = [
     "nix-command"
