@@ -13,6 +13,13 @@
   ];
 
   programs.home-manager.enable = true;
+  programs.bash.enable = true;
+
+  programs.direnv = {
+    enable = true;
+    enableBashIntegration = true;
+    nix-direnv.enable = true;
+  };
 
   home.stateVersion = "26.05";
 }
