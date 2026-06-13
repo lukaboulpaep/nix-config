@@ -25,7 +25,7 @@
         };
 
         modules = [
-          ./systems/x86_64-linux/thinkpad
+          ./hosts/thinkpad
           home-manager.nixosModules.home-manager
         ];
       };

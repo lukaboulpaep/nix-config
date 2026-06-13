@@ -2,11 +2,13 @@
 
 let
   keyboard = import ./keyboard.nix;
+  monitors = import ./monitors.nix;
 in
 
 {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/nixos/wayland/hyprland.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -26,7 +28,7 @@ in
     LC_MEASUREMENT = "nl_BE.UTF-8";
   };
 
-  services.xserver.xkb = keyboard.xkb;
+  services.xserver.xkb = keyboard.defaultXkb;
 
   users.users.luka = {
     isNormalUser = true;
@@ -34,38 +36,25 @@ in
     extraGroups = [ "wheel" "networkmanager" ];
   };
 
-  programs.hyprland = {
-    enable = true;
-    withUWSM = true;
-    xwayland.enable = true;
-  };
-
-  services.displayManager.sddm = {
-    enable = true;
-    wayland.enable = true;
-  };
-
-  services.displayManager.defaultSession = "hyprland-uwsm";
-
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "backup";
     extraSpecialArgs = {
       inherit inputs zen-browser;
+      hostKeyboard = keyboard;
+      hostMonitors = monitors;
     };
-    users.luka = import (../../../homes/x86_64-linux + "/luka@thinkpad");
+    users.luka = import ../../homes/luka/hosts/thinkpad.nix;
   };
 
   services.power-profiles-daemon.enable = true;
   services.upower.enable = true;
   services.logind.settings.Login = {
-    HandleLidSwitch = "lock";
+    HandleLidSwitch = "suspend";
     # for docking
     HandleLidSwitchExternalPower = "ignore";
   };
-
-  security.pam.services.hyprlock = { };
 
   nix.settings.experimental-features = [
     "nix-command"
@@ -74,14 +63,8 @@ in
 
   environment.systemPackages = with pkgs; [
     brightnessctl
-    cliphist
     git
-    hyprlock
-    hyprpaper
     vim
-    waybar
-    wl-clipboard
-    wofi
   ];
 
   system.stateVersion = "26.05";
