@@ -8,6 +8,7 @@ in
 {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/nixos/audio
     ../../modules/nixos/wayland/hyprland.nix
   ];
 

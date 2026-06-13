@@ -23,6 +23,15 @@ let
         ;;
     esac
   '';
+  micMute = pkgs.writeShellScript "hyprland-mic-mute" ''
+    wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+
+    if wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | grep -q MUTED; then
+      swayosd-client --custom-icon microphone-sensitivity-muted --custom-message "Microphone muted"
+    else
+      swayosd-client --custom-icon microphone-sensitivity-high --custom-message "Microphone on"
+    fi
+  '';
   mkDeviceKeyboard = device: {
     name = device.hyprlandDevice;
     kb_model = device.xkb.model;
@@ -33,6 +42,10 @@ let
 in
 
 {
+  home.packages = with pkgs; [
+    swayosd
+  ];
+
   wayland.windowManager.hyprland = {
     enable = true;
     configType = "hyprlang";
@@ -46,6 +59,7 @@ in
       monitor = monitors.hyprland;
 
       "exec-once" = [
+        "swayosd-server"
         "wl-paste --type text --watch cliphist store"
         "wl-paste --type image --watch cliphist store"
       ];
@@ -106,6 +120,10 @@ in
       bindel = [
         ", XF86MonBrightnessUp, exec, brightnessctl set 10%+"
         ", XF86MonBrightnessDown, exec, brightnessctl set 10%-"
+        ", XF86AudioRaiseVolume, exec, swayosd-client --output-volume +10 --max-volume 100"
+        ", XF86AudioLowerVolume, exec, swayosd-client --output-volume -10"
+        ", XF86AudioMute, exec, swayosd-client --output-volume mute-toggle"
+        ", XF86AudioMicMute, exec, ${micMute}"
       ];
     };
   };
