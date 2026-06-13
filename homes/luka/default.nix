@@ -9,6 +9,7 @@
     lazygit
     ghostty
     zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
+    _1password-gui
   ];
 
   programs.home-manager.enable = true;

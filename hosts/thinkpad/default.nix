@@ -1,4 +1,4 @@
-{ inputs, pkgs, zen-browser, ... }:
+{ inputs, lib, pkgs, zen-browser, ... }:
 
 let
   keyboard = import ./keyboard.nix;
@@ -60,6 +60,11 @@ in
     "nix-command"
     "flakes"
   ];
+
+  nixpkgs.config.allowUnfreePredicate = pkg:
+    builtins.elem (lib.getName pkg) [
+      "1password"
+    ];
 
   environment.systemPackages = with pkgs; [
     brightnessctl
