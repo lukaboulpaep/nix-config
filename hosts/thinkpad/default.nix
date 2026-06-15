@@ -31,6 +31,14 @@ in
 
   services.xserver.xkb = keyboard.defaultXkb;
 
+  hardware.graphics = {
+    enable = true;
+    extraPackages = with pkgs; [
+      intel-media-driver
+      vpl-gpu-rt
+    ];
+  };
+
   users.users.luka = {
     isNormalUser = true;
     description = "Luka Boulpaep";

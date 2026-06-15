@@ -8,6 +8,7 @@
     codex
     lazygit
     ghostty
+    mpv
     zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     _1password-gui
     zed-editor

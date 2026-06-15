@@ -53,7 +53,7 @@ in
     settings = {
       "$mainMod" = "SUPER";
       "$terminal" = "ghostty";
-      "$fileManager" = "dolphin";
+      "$fileManager" = "thunar";
 
       monitor = monitors.hyprland;
 
