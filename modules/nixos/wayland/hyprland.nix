@@ -24,10 +24,6 @@
 
   environment.systemPackages = with pkgs; [
     cliphist
-    hyprlock
-    hyprpaper
-    waybar
     wl-clipboard
-    wofi
   ];
 }

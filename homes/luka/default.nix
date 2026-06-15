@@ -1,4 +1,4 @@
-{ pkgs, zen-browser, ... }:
+{ pkgs, zen-browser, inputs, ... }:
 
 {
   home.username = "luka";
@@ -10,6 +10,8 @@
     ghostty
     zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     _1password-gui
+    zed-editor
+    inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 
   programs.home-manager.enable = true;
@@ -19,6 +21,23 @@
     enable = true;
     enableBashIntegration = true;
     nix-direnv.enable = true;
+  };
+
+  home.file = {
+    ".face" = {
+      source = ../../assets/profile/face.jpg;
+      force = true;
+    };
+
+    "Pictures/Wallpapers/bluehour.jpg" = {
+      source = ../../assets/wallpapers/bluehour.jpg;
+      force = true;
+    };
+
+    "Pictures/Wallpapers/corals-fish-underwater.jpg" = {
+      source = ../../assets/wallpapers/corals-fish-underwater.jpg;
+      force = true;
+    };
   };
 
   home.stateVersion = "26.05";

@@ -54,12 +54,10 @@ in
       "$mainMod" = "SUPER";
       "$terminal" = "ghostty";
       "$fileManager" = "dolphin";
-      "$menu" = "hyprlauncher";
 
       monitor = monitors.hyprland;
 
       "exec-once" = [
-        "swayosd-server"
         "wl-paste --type text --watch cliphist store"
         "wl-paste --type image --watch cliphist store"
       ];
@@ -73,14 +71,31 @@ in
 
       device = map mkDeviceKeyboard keyboard.hyprlandDevices;
 
+      general = {
+        border_size = 2;
+        "col.active_border" = "rgba(ffffffff)";
+        "col.inactive_border" = "rgba(ffffffff)";
+      };
+
+      decoration = {
+        rounding = 8;
+        blur.enabled = false;
+        shadow.enabled = false;
+      };
+
       bind = [
         "$mainMod, Q, exec, $terminal"
         "$mainMod, C, killactive,"
-        "$mainMod, M, exec, command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit"
+        "$mainMod, M, global, caelestia:session"
         "$mainMod, E, exec, $fileManager"
         "$mainMod, V, togglefloating,"
-        "$mainMod, R, exec, $menu"
-        "$mainMod SHIFT, V, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy"
+        "$mainMod, R, global, caelestia:launcher"
+        "$mainMod, SPACE, global, caelestia:launcher"
+        "$mainMod, N, global, caelestia:nexus"
+        "$mainMod, D, global, caelestia:dashboard"
+        "$mainMod, S, global, caelestia:sidebar"
+        "$mainMod, U, global, caelestia:utilities"
+        "$mainMod SHIFT, V, exec, caelestia clipboard"
 
         "${navigateMod}, H, movefocus, l"
         "${navigateMod}, J, movefocus, d"
@@ -108,7 +123,6 @@ in
         "${navigateMod} SHIFT, Tab, movecurrentworkspacetomonitor, +1"
 
         "$mainMod, W, killactive"
-        "$mainMod, SPACE, exec, wofi --show drun"
         "$mainMod SHIFT, SPACE, exec, hyprctl switchxkblayout all next"
       ];
 
