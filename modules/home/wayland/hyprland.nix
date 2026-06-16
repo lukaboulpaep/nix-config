@@ -23,6 +23,55 @@ let
         ;;
     esac
   '';
+  monitorWorkspaces = pkgs.writeShellScript "hyprland-monitor-workspaces" ''
+    internal_monitor="${monitors.internal.name}"
+    jq="${pkgs.jq}/bin/jq"
+    socat="${pkgs.socat}/bin/socat"
+
+    apply_workspace_layout() {
+      external_monitor="$(
+        hyprctl monitors -j \
+          | "$jq" -r --arg internal "$internal_monitor" '[.[] | select(.name != $internal)] | sort_by(.x) | .[0].name // empty'
+      )"
+
+      if [ -n "$external_monitor" ]; then
+        primary_monitor="$external_monitor"
+        secondary_monitor="$internal_monitor"
+      else
+        primary_monitor="$internal_monitor"
+        secondary_monitor="$internal_monitor"
+      fi
+
+      for workspace in 1 2 3 4 5; do
+        hyprctl keyword workspace "$workspace, monitor:$primary_monitor, persistent:true"
+        hyprctl dispatch moveworkspacetomonitor "$workspace $primary_monitor" >/dev/null 2>&1 || true
+      done
+
+      for workspace in 6 7 8 9 10; do
+        hyprctl keyword workspace "$workspace, monitor:$secondary_monitor, persistent:true"
+        hyprctl dispatch moveworkspacetomonitor "$workspace $secondary_monitor" >/dev/null 2>&1 || true
+      done
+
+      if [ -n "$external_monitor" ]; then
+        hyprctl dispatch focusmonitor "$external_monitor"
+        hyprctl dispatch workspace 1
+      fi
+    }
+
+    apply_workspace_layout
+
+    socket="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+    [ -S "$socket" ] || exit 0
+
+    "$socat" -U - UNIX-CONNECT:"$socket" | while read -r event; do
+      case "$event" in
+        monitoradded*|monitorremoved*)
+          sleep 1
+          apply_workspace_layout
+          ;;
+      esac
+    done
+  '';
   micMute = pkgs.writeShellScript "hyprland-mic-mute" ''
     wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
 
@@ -60,6 +109,7 @@ in
       "exec-once" = [
         "wl-paste --type text --watch cliphist store"
         "wl-paste --type image --watch cliphist store"
+        "${monitorWorkspaces}"
       ];
 
       input = {
@@ -107,17 +157,27 @@ in
         "${navigateMod} SHIFT, K, movewindow, u"
         "${navigateMod} SHIFT, L, movewindow, r"
 
-        "${navigateMod}, 1, workspace, r~1"
-        "${navigateMod}, 2, workspace, r~2"
-        "${navigateMod}, 3, workspace, r~3"
-        "${navigateMod}, 4, workspace, r~4"
-        "${navigateMod}, 5, workspace, r~5"
+        "${navigateMod}, 1, workspace, 1"
+        "${navigateMod}, 2, workspace, 2"
+        "${navigateMod}, 3, workspace, 3"
+        "${navigateMod}, 4, workspace, 4"
+        "${navigateMod}, 5, workspace, 5"
+        "${navigateMod}, 6, workspace, 6"
+        "${navigateMod}, 7, workspace, 7"
+        "${navigateMod}, 8, workspace, 8"
+        "${navigateMod}, 9, workspace, 9"
+        "${navigateMod}, 0, workspace, 10"
 
-        "${navigateMod} SHIFT, 1, movetoworkspace, r~1"
-        "${navigateMod} SHIFT, 2, movetoworkspace, r~2"
-        "${navigateMod} SHIFT, 3, movetoworkspace, r~3"
-        "${navigateMod} SHIFT, 4, movetoworkspace, r~4"
-        "${navigateMod} SHIFT, 5, movetoworkspace, r~5"
+        "${navigateMod} SHIFT, 1, movetoworkspace, 1"
+        "${navigateMod} SHIFT, 2, movetoworkspace, 2"
+        "${navigateMod} SHIFT, 3, movetoworkspace, 3"
+        "${navigateMod} SHIFT, 4, movetoworkspace, 4"
+        "${navigateMod} SHIFT, 5, movetoworkspace, 5"
+        "${navigateMod} SHIFT, 6, movetoworkspace, 6"
+        "${navigateMod} SHIFT, 7, movetoworkspace, 7"
+        "${navigateMod} SHIFT, 8, movetoworkspace, 8"
+        "${navigateMod} SHIFT, 9, movetoworkspace, 9"
+        "${navigateMod} SHIFT, 0, movetoworkspace, 10"
 
         "${navigateMod}, Tab, focusmonitor, +1"
         "${navigateMod} SHIFT, Tab, movecurrentworkspacetomonitor, +1"
