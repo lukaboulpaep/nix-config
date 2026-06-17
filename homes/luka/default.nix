@@ -5,7 +5,9 @@
   home.homeDirectory = "/home/luka";
 
   home.packages = with pkgs; [
+    bruno
     codex
+    gh
     lazygit
     ghostty
     mpv
