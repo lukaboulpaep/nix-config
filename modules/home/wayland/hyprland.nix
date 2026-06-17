@@ -1,9 +1,28 @@
-{ hostKeyboard, hostMonitors, lib, pkgs, ... }:
+{ config, hostKeyboard, hostMonitors, lib, pkgs, ... }:
 
 let
   navigateMod = "ALT";
   keyboard = hostKeyboard;
   monitors = hostMonitors;
+  wallpaper = "${config.home.homeDirectory}/Pictures/Wallpapers/bluehour.jpg";
+  launcher = "fuzzel";
+  clipboardMenu = pkgs.writeShellScript "hyprland-clipboard-menu" ''
+    selection="$(cliphist list | fuzzel --dmenu --prompt 'Clipboard  ')"
+    [ -n "$selection" ] || exit 0
+
+    printf '%s' "$selection" | cliphist decode | wl-copy
+  '';
+  powerMenu = pkgs.writeShellScript "hyprland-power-menu" ''
+    choice="$(printf '%s\n' Lock Suspend Reboot Shutdown Logout | fuzzel --dmenu --prompt 'Power  ')"
+
+    case "$choice" in
+      Lock) loginctl lock-session ;;
+      Suspend) systemctl suspend ;;
+      Reboot) systemctl reboot ;;
+      Shutdown) systemctl poweroff ;;
+      Logout) hyprctl dispatch exit ;;
+    esac
+  '';
   lidSwitch = pkgs.writeShellScript "hyprland-lid-switch" ''
     internal_monitor="${monitors.internal.name}"
     internal_mode="${monitors.internal.mode}"
@@ -92,8 +111,60 @@ in
 
 {
   home.packages = with pkgs; [
+    brightnessctl
+    fuzzel
+    hyprpaper
     swayosd
+    wl-clipboard
   ];
+
+  programs.fuzzel = {
+    enable = true;
+    settings = {
+      main = {
+        terminal = "ghostty";
+        layer = "overlay";
+        width = 42;
+        lines = 12;
+        horizontal-pad = 18;
+        vertical-pad = 14;
+        inner-pad = 10;
+        font = "Inter:size=11";
+        icons-enabled = true;
+      };
+
+      colors = {
+        background = "111318dd";
+        text = "f4f1ecff";
+        match = "f2b8a2ff";
+        selection = "2a2f36ee";
+        selection-text = "ffffffff";
+        selection-match = "f2b8a2ff";
+        border = "f2b8a2ff";
+      };
+
+      border = {
+        width = 2;
+        radius = 14;
+      };
+    };
+  };
+
+  services.hyprpaper = {
+    enable = true;
+    settings = {
+      wallpaper = [
+        {
+          monitor = monitors.internal.name;
+          path = wallpaper;
+          fit_mode = "cover";
+        }
+      ];
+      splash = false;
+    };
+  };
+
+  services.swayosd.enable = true;
 
   wayland.windowManager.hyprland = {
     enable = true;
@@ -122,30 +193,67 @@ in
       device = map mkDeviceKeyboard keyboard.hyprlandDevices;
 
       general = {
+        gaps_in = 6;
+        gaps_out = 12;
         border_size = 2;
-        "col.active_border" = "rgba(ffffffff)";
-        "col.inactive_border" = "rgba(ffffffff)";
+        resize_on_border = true;
+        "col.active_border" = "rgba(f2b8a2ff) rgba(93c5fdff) 45deg";
+        "col.inactive_border" = "rgba(f4f1ec33)";
       };
 
       decoration = {
-        rounding = 8;
-        blur.enabled = false;
-        shadow.enabled = false;
+        rounding = 12;
+        rounding_power = 2;
+        blur = {
+          enabled = true;
+          size = 8;
+          passes = 3;
+          vibrancy = 0.18;
+        };
+        shadow = {
+          enabled = true;
+          range = 18;
+          render_power = 3;
+          color = "rgba(090b10aa)";
+        };
+      };
+
+      animations = {
+        enabled = true;
+        bezier = [
+          "easeOut, 0.16, 1, 0.3, 1"
+          "easeInOut, 0.65, 0, 0.35, 1"
+        ];
+        animation = [
+          "windows, 1, 4, easeOut, popin 85%"
+          "windowsOut, 1, 3, easeInOut, popin 85%"
+          "border, 1, 6, easeOut"
+          "fade, 1, 4, easeOut"
+          "workspaces, 1, 4, easeOut, slide"
+        ];
+      };
+
+      dwindle = {
+        preserve_split = true;
+      };
+
+      misc = {
+        disable_hyprland_logo = true;
+        disable_splash_rendering = true;
+        focus_on_activate = true;
       };
 
       bind = [
         "$mainMod, Q, exec, $terminal"
         "$mainMod, C, killactive,"
-        "$mainMod, M, global, caelestia:session"
+        "$mainMod, M, exec, ${powerMenu}"
         "$mainMod, E, exec, $fileManager"
         "$mainMod, V, togglefloating,"
-        "$mainMod, R, global, caelestia:launcher"
-        "$mainMod, SPACE, global, caelestia:launcher"
-        "$mainMod, N, global, caelestia:nexus"
-        "$mainMod, D, global, caelestia:dashboard"
-        "$mainMod, S, global, caelestia:sidebar"
-        "$mainMod, U, global, caelestia:utilities"
-        "$mainMod SHIFT, V, exec, caelestia clipboard"
+        "$mainMod, R, exec, ${launcher}"
+        "$mainMod, SPACE, exec, ${launcher}"
+        "$mainMod SHIFT, V, exec, ${clipboardMenu}"
+        "$mainMod, F, fullscreen,"
+        "$mainMod SHIFT, Q, exit,"
 
         "${navigateMod}, H, movefocus, l"
         "${navigateMod}, J, movefocus, d"
@@ -200,6 +308,45 @@ in
         ", XF86AudioMicMute, exec, ${micMute}"
       ];
     };
+
+    extraConfig = ''
+      layerrule {
+        name = waybar-effects
+        match:namespace = waybar
+        blur = true
+        ignore_alpha = 0.0
+      }
+
+      windowrule {
+        name = pavucontrol-float
+        match:class = ^(pavucontrol)$
+        float = true
+      }
+
+      windowrule {
+        name = pip-float
+        match:title = ^(Picture-in-Picture)$
+        float = true
+      }
+
+      windowrule {
+        name = pip-pin
+        match:title = ^(Picture-in-Picture)$
+        pin = true
+      }
+
+      windowrule {
+        name = thunar-size
+        match:class = ^(thunar)$
+        size = 960 640
+      }
+
+      windowrule {
+        name = center-floating
+        match:float = true
+        center = true
+      }
+    '';
   };
 
   services.hypridle = {
