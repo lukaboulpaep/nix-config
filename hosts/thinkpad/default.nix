@@ -18,6 +18,8 @@ in
   networking.hostName = "thinkpad";
   networking.networkmanager.enable = true;
 
+  services.flatpak.enable = true;
+
   time.timeZone = "Europe/Brussels";
 
   console.keyMap = keyboard.consoleKeyMap;
