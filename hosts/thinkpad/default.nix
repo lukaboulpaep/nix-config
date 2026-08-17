@@ -20,6 +20,8 @@ in
 
   services.flatpak.enable = true;
 
+  virtualisation.docker.enable = true;
+
   time.timeZone = "Europe/Brussels";
 
   console.keyMap = keyboard.consoleKeyMap;
@@ -44,7 +46,7 @@ in
   users.users.luka = {
     isNormalUser = true;
     description = "Luka Boulpaep";
-    extraGroups = [ "wheel" "networkmanager" ];
+    extraGroups = [ "wheel" "networkmanager" "docker" ];
   };
 
   home-manager = {
