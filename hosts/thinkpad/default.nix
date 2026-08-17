@@ -62,6 +62,17 @@ in
   };
 
   services.power-profiles-daemon.enable = true;
+  systemd.services.set-balanced-power-profile = {
+    description = "Set the default power profile to balanced";
+    wantedBy = [ "graphical.target" ];
+    after = [ "power-profiles-daemon.service" ];
+    requires = [ "power-profiles-daemon.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.power-profiles-daemon}/bin/powerprofilesctl set balanced";
+      RemainAfterExit = true;
+    };
+  };
   services.upower.enable = true;
   services.logind.settings.Login = {
     HandleLidSwitch = "suspend";
