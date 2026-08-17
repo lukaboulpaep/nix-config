@@ -113,6 +113,7 @@ in
   home.packages = with pkgs; [
     brightnessctl
     fuzzel
+    grimblast
     hyprpaper
     swayosd
     wl-clipboard
@@ -254,6 +255,9 @@ in
         "$mainMod SHIFT, V, exec, ${clipboardMenu}"
         "$mainMod, F, fullscreen,"
         "$mainMod SHIFT, Q, exit,"
+
+        ", Print, exec, grimblast copy screen"
+        "SHIFT, Print, exec, grimblast copy area"
 
         "${navigateMod}, H, movefocus, l"
         "${navigateMod}, J, movefocus, d"
