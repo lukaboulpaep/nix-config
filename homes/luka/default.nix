@@ -10,6 +10,7 @@
 
   home.packages = with pkgs;
     [
+      aws-vault
       bruno
       codex
       gh
