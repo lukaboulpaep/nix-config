@@ -1,100 +1,45 @@
-{ inputs, lib, pkgs, zen-browser, ... }:
-
-let
-  keyboard = import ./keyboard.nix;
-  monitors = import ./monitors.nix;
-in
+{
+  hostConfig,
+  hostName,
+  lib,
+  ...
+}:
 
 {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/nixos/audio
-    ../../modules/nixos/wayland/hyprland.nix
+
+    ../../modules/core
+    ../../modules/boot
+    ../../modules/networking
+    ../../modules/users
+    ../../modules/packages
+    ../../modules/polkit
+    ../../modules/programming
+  ]
+  ++ lib.optionals hostConfig.features.audio [
+    ../../modules/audio
+  ]
+  ++ lib.optionals hostConfig.features.desktop [
+    ../../modules/fonts
+    ../../modules/graphics
+    ../../modules/xdg
+    ../../modules/notifications
+    ../../modules/hyprland
+    ../../modules/desktop
+    ../../modules/session
+    ../../modules/stylix
+  ]
+  ++ lib.optionals hostConfig.features.bluetooth [
+    ../../modules/bluetooth
+  ]
+  ++ lib.optionals hostConfig.features.battery [
+    ../../modules/power
+  ]
+  ++ lib.optionals hostConfig.features.containers [
+    ../../modules/containers
   ];
 
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-
-  networking.hostName = "thinkpad";
-  networking.networkmanager.enable = true;
-
-  services.flatpak.enable = true;
-
-  virtualisation.docker.enable = true;
-
-  time.timeZone = "Europe/Brussels";
-
-  console.keyMap = keyboard.consoleKeyMap;
-
-  i18n.defaultLocale = "en_US.UTF-8";
-  i18n.extraLocaleSettings = {
-    LC_TIME = "nl_BE.UTF-8";
-    LC_MONETARY = "nl_BE.UTF-8";
-    LC_MEASUREMENT = "nl_BE.UTF-8";
-  };
-
-  services.xserver.xkb = keyboard.defaultXkb;
-
-  hardware.graphics = {
-    enable = true;
-    extraPackages = with pkgs; [
-      intel-media-driver
-      vpl-gpu-rt
-    ];
-  };
-
-  users.users.luka = {
-    isNormalUser = true;
-    description = "Luka Boulpaep";
-    extraGroups = [ "wheel" "networkmanager" "docker" ];
-  };
-
-  home-manager = {
-    useGlobalPkgs = true;
-    useUserPackages = true;
-    backupFileExtension = "backup";
-    extraSpecialArgs = {
-      inherit inputs zen-browser;
-      hostKeyboard = keyboard;
-      hostMonitors = monitors;
-    };
-    users.luka = import ../../homes/luka/hosts/thinkpad.nix;
-  };
-
-  services.power-profiles-daemon.enable = true;
-  systemd.services.set-balanced-power-profile = {
-    description = "Set the default power profile to balanced";
-    wantedBy = [ "graphical.target" ];
-    after = [ "power-profiles-daemon.service" ];
-    requires = [ "power-profiles-daemon.service" ];
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.power-profiles-daemon}/bin/powerprofilesctl set balanced";
-      RemainAfterExit = true;
-    };
-  };
-  services.upower.enable = true;
-  services.logind.settings.Login = {
-    HandleLidSwitch = "suspend";
-    # for docking
-    HandleLidSwitchExternalPower = "ignore";
-  };
-
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
-
-  nixpkgs.config.allowUnfreePredicate = pkg:
-    builtins.elem (lib.getName pkg) [
-      "1password"
-    ];
-
-  environment.systemPackages = with pkgs; [
-    brightnessctl
-    git
-    vim
-  ];
-
-  system.stateVersion = "26.05";
+  networking.hostName = hostName;
+  services.flatpak.enable = hostConfig.features.desktop;
 }

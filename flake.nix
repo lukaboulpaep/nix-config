@@ -1,13 +1,20 @@
 {
-  description = "My NixOS configuration";
+  description = "Luka's modular NixOS configuration";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
     home-manager = {
-      url = "github:nix-community/home-manager";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    stylix = {
+      url = "github:danth/stylix/release-26.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    apple-fonts.url = "github:Lyndeno/apple-fonts.nix";
 
     nix-flatpak.url = "github:gmodena/nix-flatpak/v0.7.0";
 
@@ -15,27 +22,73 @@
       url = "github:youwen5/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    herdr = {
-      url = "github:ogulcancelik/herdr/v0.7.0";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, home-manager, zen-browser, herdr, ... }@inputs: {
-    nixosConfigurations = {
-      thinkpad = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
+  outputs =
+    inputs@{
+      nixpkgs,
+      home-manager,
+      stylix,
+      apple-fonts,
+      ...
+    }:
+    let
+      inventory = import ./lib/inventory.nix;
 
-        specialArgs = {
-          inherit inputs zen-browser;
+      mkHomeUser =
+        hostConfig: username:
+        let
+          userConfig = inventory.users.${username};
+        in
+        {
+          imports = [ ./home ] ++ map (profile: ./home/profiles + "/${profile}.nix") userConfig.profiles;
+          _module.args = {
+            inherit hostConfig userConfig;
+          };
         };
 
-        modules = [
-          ./hosts/thinkpad
-          home-manager.nixosModules.home-manager
-        ];
-      };
+      mkHost =
+        hostName: hostConfig:
+        nixpkgs.lib.nixosSystem {
+          system = hostConfig.system;
+          specialArgs = {
+            inherit
+              hostConfig
+              hostName
+              inputs
+              inventory
+              ;
+          };
+
+          modules = [
+            {
+              nixpkgs.overlays = [
+                apple-fonts.overlays.default
+              ];
+            }
+
+            stylix.nixosModules.stylix
+            hostConfig.module
+            home-manager.nixosModules.home-manager
+
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "backup";
+              home-manager.extraSpecialArgs = {
+                inherit hostConfig inputs inventory;
+              };
+              home-manager.users = builtins.listToAttrs (
+                map (username: {
+                  name = username;
+                  value = mkHomeUser hostConfig username;
+                }) hostConfig.users
+              );
+            }
+          ];
+        };
+    in
+    {
+      nixosConfigurations = builtins.mapAttrs mkHost inventory.hosts;
     };
-  };
 }
