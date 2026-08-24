@@ -129,7 +129,7 @@ in
       };
 
       sizes = {
-        applications = global.ui.fontSize;
+        applications = global.ui.fontSizeApplication;
         desktop = global.ui.fontSize;
         popups = global.ui.fontSize;
         terminal = global.ui.fontSize;
