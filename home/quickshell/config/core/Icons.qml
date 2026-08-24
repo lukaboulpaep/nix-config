@@ -224,7 +224,7 @@ QtObject {
     readonly property string gear: "\udb81\udc93"         // F0493  cog
 
     readonly property string refresh: "\udb81\udc50"      // F0450  refresh
-    readonly property string lock: "\udb80\udfba"         // F03BA
+    readonly property string lock: "\udb80\udf3e"         // F033E
     readonly property string send: "\udb81\udc0c"         // F040C
     readonly property string clipboard: "\udb81\udcd6"    // F04D6
     // F051E used to double as the refresh/rescan glyph in the popup headers.

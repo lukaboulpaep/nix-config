@@ -324,7 +324,7 @@ Components.PopupSurface {
                             anchors.leftMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
 
-                            text: "\udb80\udfba"
+                            text: Core.Icons.lock
 
                             font.family: Core.Theme.fontFamily
                             font.pixelSize: 13
@@ -565,7 +565,7 @@ Components.PopupSurface {
 
                         subtitle: netRow.inUse ? "Connected" : (netRow.saved ? "Saved · " : "") + (netRow.secured ? netRow.security : "Open")
 
-                        trailing: netRow.secured ? "\udb80\udfba " + netRow.strength + "%" : netRow.strength + "%"
+                        trailing: netRow.secured ? Core.Icons.lock + " " + netRow.strength + "%" : netRow.strength + "%"
 
                         active: netRow.inUse
 
