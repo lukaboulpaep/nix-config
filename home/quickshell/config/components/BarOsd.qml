@@ -1,6 +1,7 @@
 import QtQuick
 
 import "../core" as Core
+import "../services" as Services
 
 // BarOsd
 
@@ -111,6 +112,16 @@ Item {
                         easing.type: Easing.OutQuint
                     }
                 }
+            }
+
+            MinimumZone {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+
+                width: parent.width * Services.BrightnessService.minimumFraction
+
+                visible: root.kind === "brightness" && Services.BrightnessService.minimumFraction > 0
             }
         }
 

@@ -16,12 +16,14 @@ Item {
 
     readonly property int level: Services.BrightnessService.level
 
+    readonly property bool menuOpen: Core.PopupManager.isOpen("brightness")
+
     Rectangle {
         anchors.fill: parent
 
         radius: height / 2
 
-        color: mouse.containsMouse ? Core.Theme.hover : "transparent"
+        color: root.menuOpen ? Core.Theme.surfaceActive : (mouse.containsMouse ? Core.Theme.hover : "transparent")
 
         Behavior on color {
             ColorAnimation {
@@ -44,7 +46,14 @@ Item {
 
             font.pixelSize: Core.Theme.iconSize
 
-            color: Core.Theme.accent
+            color: root.menuOpen ? Core.Theme.accent : Core.Theme.foreground
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 120
+                    easing.type: Easing.OutQuint
+                }
+            }
         }
 
         Text {
@@ -79,6 +88,10 @@ Item {
             Services.BrightnessService.step(event.angleDelta.y > 0);
         }
 
-        onClicked: Services.BrightnessService.step(true)
+        onClicked: {
+            const p = root.mapToItem(null, 0, root.height);
+
+            Core.PopupManager.toggle("brightness", p.x + root.width / 2, p.y + Core.Theme.barMarginTop);
+        }
     }
 }

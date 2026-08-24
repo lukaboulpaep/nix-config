@@ -22,6 +22,19 @@ Singleton {
 
     readonly property int stepSize: 5
 
+    // brightnessctl refuses to write below this raw hardware value. On this
+    // panel and the exponent-4 curve that becomes a visible floor near 25%.
+    readonly property int minRaw: 2
+
+    // brightnessctl reports percentages on this perceptual curve, while sysfs
+    // exposes the raw linear value. Match the keyboard path's brightnessctl
+    // curve so the popup and OSD report the value users actually selected.
+    readonly property real curveExponent: 4
+
+    readonly property real minimumFraction: root.maxRaw > 0 ? Math.pow(root.minRaw / root.maxRaw, 1 / root.curveExponent) : 0
+
+    readonly property int minimumLevel: Math.round(root.minimumFraction * 100)
+
     // Discovered hardware
 
     // e.g. "amdgpu_bl1" or "intel_backlight".
@@ -42,7 +55,7 @@ Singleton {
             return;
         root.available = true;
 
-        if (Date.now() < root.ignoreReadsUntil)
+        if (root.writer.running || root.pendingLevel >= 0 || Date.now() < root.ignoreReadsUntil)
             return;
         const value = Math.max(0, Math.min(100, Math.round(percent)));
 
@@ -51,10 +64,19 @@ Singleton {
             root.level = value;
     }
 
+    function percentFromRaw(raw) {
+        if (root.maxRaw <= 0)
+            return -1;
+
+        const linear = Math.max(0, Math.min(1, raw / root.maxRaw));
+
+        return Math.pow(linear, 1 / root.curveExponent) * 100;
+    }
+
     // One-shot discovery
 
     property Process probe: Process {
-        command: ["brightnessctl", "-m"]
+        command: ["brightnessctl", "-e" + root.curveExponent, "-m"]
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -97,19 +119,47 @@ Singleton {
 
             if (isNaN(raw))
                 return;
-            root.ingest(raw / root.maxRaw * 100);
+            root.ingest(root.percentFromRaw(raw));
         }
     }
 
     // Actions
 
-    function change(amount) {
-        Quickshell.execDetached(["brightnessctl", "-e4", "-n2", "set", amount]);
+    // Writes are absolute and serialised. Repeating function-key events can
+    // otherwise launch several relative brightnessctl processes that all read
+    // the same old value and then finish out of order.
+    property int pendingLevel: -1
+
+    property int writingLevel: -1
+
+    property Process writer: Process {
+        onExited: function (exitCode) {
+            root.ignoreReadsUntil = Date.now() + 120;
+
+            if (root.pendingLevel >= 0) {
+                Qt.callLater(root.startWrite);
+                return;
+            }
+
+            root.writingLevel = -1;
+            root.settleTimer.restart();
+        }
+    }
+
+    function startWrite() {
+        if (root.writer.running || root.pendingLevel < 0)
+            return;
+
+        root.writingLevel = root.pendingLevel;
+        root.pendingLevel = -1;
+        root.writer.command = ["brightnessctl", "-e" + root.curveExponent, "-n" + root.minRaw, "set", root.writingLevel + "%"];
+        root.writer.running = true;
     }
 
     // Predict so the click feels instant, then let the file read (within ~100ms) settle the true value.
     function applyPredicted(next) {
-        const clamped = Math.max(0, Math.min(100, Math.round(next)));
+        const floor = root.available ? root.minimumLevel : 0;
+        const clamped = Math.max(floor, Math.min(100, Math.round(next)));
 
         root.ignoreReadsUntil = Date.now() + 120;
 
@@ -122,14 +172,16 @@ Singleton {
     }
 
     function step(up) {
-        root.applyPredicted(root.level + (up ? root.stepSize : -root.stepSize));
-
-        root.change(up ? root.stepSize + "%+" : root.stepSize + "%-");
+        root.setPercent(root.level + (up ? root.stepSize : -root.stepSize));
     }
 
     function setPercent(percent) {
-        root.applyPredicted(percent);
-        root.change(Math.round(percent) + "%");
+        const floor = root.available ? root.minimumLevel : 0;
+        const target = Math.max(floor, Math.min(100, Math.round(percent)));
+
+        root.applyPredicted(target);
+        root.pendingLevel = target;
+        root.startWrite();
     }
 
     function refresh() {
@@ -141,7 +193,10 @@ Singleton {
 
     // OSD trigger
 
-    onLevelChanged: Core.OsdController.show("brightness", root.fraction, false)
+    // Use the changed property directly. The derived `fraction` binding can
+    // still contain the previous level while this signal handler is running,
+    // which made the OSD lag one step behind the correctly bound popup.
+    onLevelChanged: Core.OsdController.show("brightness", root.level / 100, false)
 
     // Timers
 
@@ -151,6 +206,14 @@ Singleton {
 
         running: root.device !== ""
         repeat: true
+
+        onTriggered: root.backlightFile.reload()
+    }
+
+    property Timer settleTimer: Timer {
+        interval: 140
+
+        repeat: false
 
         onTriggered: root.backlightFile.reload()
     }

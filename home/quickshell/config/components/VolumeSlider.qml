@@ -15,6 +15,12 @@ Item {
 
     property color fillColor: Core.Theme.accent
 
+    // Values below this floor cannot be selected. A striped warning zone makes
+    // hardware minimums visible instead of letting the knob jump mysteriously.
+    property real minimumValue: 0
+
+    property color minimumColor: Core.Theme.warning
+
     // Emitted continuously while dragging and on click.
     signal moved(real value)
 
@@ -25,7 +31,9 @@ Item {
 
     readonly property bool dragging: sliderMouse.pressed
 
-    readonly property real shown: Math.max(0, Math.min(1, root.value))
+    readonly property real minimumShown: Math.max(0, Math.min(1, root.minimumValue))
+
+    readonly property real shown: Math.max(root.minimumShown, Math.min(1, root.value))
 
     opacity: root.enabled ? 1.0 : 0.45
 
@@ -87,6 +95,18 @@ Item {
             }
         }
 
+        MinimumZone {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+
+            width: parent.width * root.minimumShown
+
+            visible: root.minimumShown > 0
+
+            tint: root.minimumColor
+        }
+
         Rectangle {
             id: knob
 
@@ -141,7 +161,7 @@ Item {
             if (track.width <= 0)
                 return 0;
 
-            const ratio = Math.max(0, Math.min(1, mx / track.width));
+            const ratio = Math.max(root.minimumShown, Math.min(1, mx / track.width));
 
             root.moved(ratio);
 
@@ -167,7 +187,7 @@ Item {
 
             const next = event.angleDelta.y > 0 ? root.value + step : root.value - step;
 
-            root.moved(Math.max(0, Math.min(1, next)));
+            root.moved(Math.max(root.minimumShown, Math.min(1, next)));
         }
     }
 }

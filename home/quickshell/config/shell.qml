@@ -13,6 +13,7 @@ Scope {
     BluetoothPopup {}
     BatteryPopup {}
     AudioPopup {}
+    BrightnessPopup {}
     CalendarPopup {}
     NotificationPopup {}
     Notifications {}
