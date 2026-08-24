@@ -1,7 +1,13 @@
-{ pkgs, ... }:
+{
+  hostConfig,
+  inputs,
+  pkgs,
+  ...
+}:
 
 {
-  environment.systemPackages = with pkgs; [
-     codex
+  environment.systemPackages = [
+    pkgs.codex
+    inputs.herdr.packages.${hostConfig.system}.herdr
   ];
 }
