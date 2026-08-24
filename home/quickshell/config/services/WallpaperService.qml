@@ -41,7 +41,10 @@ QtObject {
         command: [
             "sh",
             "-c",
-            "find \"$1\" -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.gif' \\) -printf '%f\\t%p\\n' 2>/dev/null | sort -f",
+            // Home Manager installs the bundled wallpapers as symlinks. Follow
+            // them while scanning, but keep the user-facing ~/Wallpapers path
+            // so previews and persisted selections remain stable across builds.
+            "find -L \"$1\" -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.gif' \\) -printf '%f\\t%p\\n' 2>/dev/null | sort -f",
             "sh",
             root.wallpaperDirectory
         ]

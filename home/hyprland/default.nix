@@ -23,6 +23,15 @@ let
   '') hostConfig.keyboards.externalUS;
 in
 {
+  assertions = [
+    {
+      assertion = builtins.pathExists (
+        ../../assets/wallpapers + "/${hostConfig.desktop.defaultWallpaper}"
+      );
+      message = "The default wallpaper '${hostConfig.desktop.defaultWallpaper}' is not in assets/wallpapers.";
+    }
+  ];
+
   xdg.configFile = staticConfigEntries // {
     "systemd/user/plasma-polkit-agent.service.d/environment.conf".text = ''
       [Unit]
@@ -114,6 +123,8 @@ in
     '';
 
     "hypr/scripts/restore-wallpaper.sh".source = ./scripts/restore-wallpaper.sh;
+
+    "aurora/default-wallpaper".text = hostConfig.desktop.defaultWallpaper + "\n";
   };
 
   systemd.user.targets.hyprland-session.Unit = {

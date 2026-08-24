@@ -44,6 +44,7 @@
         fileManager = "thunar";
         fileManagerDesktop = "thunar.desktop";
         mediaPlayerDesktop = "mpv.desktop";
+        defaultWallpaper = "bluehour.jpg";
       };
 
       hardware.camera = {
