@@ -28,6 +28,10 @@
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
     "1password"
+    "ipu6-camera-bins"
+    "ipu6-camera-bins-unstable"
+    "ivsc-firmware"
+    "ivsc-firmware-unstable"
   ];
 
   system.stateVersion = "26.05";

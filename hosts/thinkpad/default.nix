@@ -33,6 +33,9 @@
   ++ lib.optionals hostConfig.features.bluetooth [
     ../../modules/bluetooth
   ]
+  ++ lib.optionals hostConfig.features.camera [
+    ../../modules/camera
+  ]
   ++ lib.optionals hostConfig.features.battery [
     ../../modules/power
   ]

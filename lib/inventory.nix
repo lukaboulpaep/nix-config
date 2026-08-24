@@ -30,6 +30,7 @@
         battery = true;
         lid = true;
         intelGraphics = true;
+        camera = true;
         containers = true;
       };
 
@@ -43,6 +44,11 @@
         fileManager = "thunar";
         fileManagerDesktop = "thunar.desktop";
         mediaPlayerDesktop = "mpv.desktop";
+      };
+
+      hardware.camera = {
+        backend = "ipu6";
+        platform = "ipu6epmtl";
       };
 
       keyboards = {

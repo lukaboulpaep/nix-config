@@ -14,7 +14,8 @@ let
     extraGroups = [
       "wheel"
       "networkmanager"
-    ];
+    ]
+    ++ lib.optionals hostConfig.features.camera [ "video" ];
   };
 in
 {
