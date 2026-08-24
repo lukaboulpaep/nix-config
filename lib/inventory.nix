@@ -45,6 +45,7 @@
         fileManagerDesktop = "thunar.desktop";
         mediaPlayerDesktop = "mpv.desktop";
         defaultWallpaper = "bluehour.jpg";
+        screenShareMaxFps = 30;
       };
 
       hardware.camera = {

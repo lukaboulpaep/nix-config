@@ -46,6 +46,12 @@ in
 
     "hypr/hyprland.lua".source = ./hyprland.lua;
 
+    "hypr/xdph.conf".text = ''
+      screencopy {
+        max_fps = ${toString hostConfig.desktop.screenShareMaxFps}
+      }
+    '';
+
     "hypr/config/variables.lua".text = ''
       local M = {}
 
@@ -100,7 +106,7 @@ in
           sensitivity = 0,
           accel_profile = "flat",
           touchpad = {
-            natural_scroll = true,
+            natural_scroll = false,
             scroll_factor = 0.80,
             tap_to_click = true,
             tap_and_drag = true,
