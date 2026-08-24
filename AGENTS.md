@@ -18,6 +18,12 @@
 - Hyprland layer and window rules should refer only to applications actually retained by the configuration.
 - Runtime dependencies must be declared in Nix. Graphical services must follow `graphical-session.target` and guard on `WAYLAND_DISPLAY` where required.
 
+## Quickshell development
+
+- Keep exactly one Quickshell instance running at steady state. Never launch a test shell alongside the managed `quickshell.service`; duplicate bars, popups, OSDs, and notification-server registrations make UI results unreliable.
+- For iterative QML work, stop and runtime-mask the managed `quickshell.service`, terminate any remaining Quickshell instances, and immediately launch the repository configuration with `qs -p /etc/nixos/home/quickshell/config`. The runtime mask prevents D-Bus notification activation from recreating the managed shell during a hot reload. Quickshell reloads the repository source as QML files change, so do not rebuild NixOS merely to preview QML edits.
+- Before handing work back, run `qs list --all`, verify that exactly one healthy instance remains, and state whether it is the repository-backed development instance or the managed deployed service. To return to the managed service, stop the development instance, runtime-unmask `quickshell.service`, then start it.
+
 ## Hardware and safety
 
 - This ThinkPad is Intel-only. Do not introduce NVIDIA, CUDA, PRIME bus IDs, or `nvidia-offload` configuration without a new verified host that declares that hardware.
