@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 
 import "../core" as Core
@@ -21,6 +22,16 @@ Singleton {
     property bool available: false
 
     readonly property int stepSize: 5
+
+    // DDC/CI values for external outputs, keyed by Hyprland connector name.
+    // A value appears after the first successful brightness command/read.
+    property var externalLevels: ({})
+
+    property string ddcMonitor: ""
+    property var ddcSelector: []
+    property int ddcPendingDelta: 0
+    property int ddcPendingAbsolute: -1
+    property int ddcReadLevel: -1
 
     // brightnessctl refuses to write below this raw hardware value. On this
     // panel and the exponent-4 curve that becomes a visible floor near 25%.
@@ -71,6 +82,85 @@ Singleton {
         const linear = Math.max(0, Math.min(1, raw / root.maxRaw));
 
         return Math.pow(linear, 1 / root.curveExponent) * 100;
+    }
+
+    function monitorByName(name) {
+        const monitors = Hyprland.monitors.values;
+
+        for (let i = 0; i < monitors.length; i++) {
+            if (monitors[i].name === name)
+                return monitors[i];
+        }
+
+        return null;
+    }
+
+    function targetMonitorName(requested) {
+        if (requested && requested.length > 0)
+            return requested;
+
+        return Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : DisplayService.internalMonitor;
+    }
+
+    function isInternalMonitor(name) {
+        return name === DisplayService.internalMonitor;
+    }
+
+    function levelFor(name) {
+        const monitorName = root.targetMonitorName(name);
+
+        if (root.isInternalMonitor(monitorName))
+            return root.level;
+
+        const value = root.externalLevels[monitorName];
+
+        return typeof value === "number" ? value : -1;
+    }
+
+    function fractionFor(name) {
+        const value = root.levelFor(name);
+
+        return value < 0 ? 0 : value / 100;
+    }
+
+    function availableFor(name) {
+        const monitorName = root.targetMonitorName(name);
+
+        return root.isInternalMonitor(monitorName) ? root.available : root.monitorByName(monitorName) !== null;
+    }
+
+    function minimumFractionFor(name) {
+        return root.isInternalMonitor(name) ? root.minimumFraction : 0;
+    }
+
+    function updateExternalLevel(name, value) {
+        const levels = {};
+
+        for (const key in root.externalLevels)
+            levels[key] = root.externalLevels[key];
+
+        levels[name] = Math.max(0, Math.min(100, Math.round(value)));
+        root.externalLevels = levels;
+    }
+
+    function selectorFor(monitor) {
+        if (!monitor)
+            return [];
+
+        const info = monitor.lastIpcObject || {};
+        const model = info.model ? String(info.model).trim() : "";
+        const serial = info.serial ? String(info.serial).trim() : "";
+        const selector = [];
+
+        if (model.length === 0)
+            return selector;
+
+        selector.push("--model", model);
+
+        if (serial.length > 0)
+            selector.push("--sn", serial);
+
+        return selector;
     }
 
     // One-shot discovery
@@ -157,7 +247,7 @@ Singleton {
     }
 
     // Predict so the click feels instant, then let the file read (within ~100ms) settle the true value.
-    function applyPredicted(next) {
+    function applyPredicted(next, monitorName) {
         const floor = root.available ? root.minimumLevel : 0;
         const clamped = Math.max(floor, Math.min(100, Math.round(next)));
 
@@ -165,21 +255,36 @@ Singleton {
 
         if (clamped !== root.level) {
             root.level = clamped;
-        } else {
-            // Already at the rail, so onLevelChanged will not fire.
-            Core.OsdController.show("brightness", root.fraction, false);
         }
+
+        // Only explicit user actions raise the OSD. Passive sysfs changes
+        // include the internal panel dropping to zero while its lid closes.
+        Core.OsdController.show("brightness", clamped / 100, false, monitorName);
     }
 
-    function step(up) {
-        root.setPercent(root.level + (up ? root.stepSize : -root.stepSize));
+    function step(up, requestedMonitor) {
+        const monitorName = root.targetMonitorName(requestedMonitor);
+
+        if (root.isInternalMonitor(monitorName)) {
+            root.setPercent(root.level + (up ? root.stepSize : -root.stepSize), monitorName);
+            return;
+        }
+
+        root.queueDdcDelta(root.monitorByName(monitorName), up ? root.stepSize : -root.stepSize);
     }
 
-    function setPercent(percent) {
+    function setPercent(percent, requestedMonitor) {
+        const monitorName = root.targetMonitorName(requestedMonitor);
+
+        if (!root.isInternalMonitor(monitorName)) {
+            root.queueDdcAbsolute(root.monitorByName(monitorName), percent);
+            return;
+        }
+
         const floor = root.available ? root.minimumLevel : 0;
         const target = Math.max(floor, Math.min(100, Math.round(percent)));
 
-        root.applyPredicted(target);
+        root.applyPredicted(target, monitorName);
         root.pendingLevel = target;
         root.startWrite();
     }
@@ -191,12 +296,125 @@ Singleton {
             root.backlightFile.reload();
     }
 
-    // OSD trigger
+    // External DDC/CI actions
 
-    // Use the changed property directly. The derived `fraction` binding can
-    // still contain the previous level while this signal handler is running,
-    // which made the OSD lag one step behind the correctly bound popup.
-    onLevelChanged: Core.OsdController.show("brightness", root.level / 100, false)
+    function selectDdcMonitor(monitor) {
+        if (!monitor || root.isInternalMonitor(monitor.name))
+            return false;
+
+        const selector = root.selectorFor(monitor);
+
+        if (selector.length === 0)
+            return false;
+
+        if ((root.ddcWriter.running || root.ddcReader.running) && root.ddcMonitor !== monitor.name)
+            return false;
+
+        root.ddcMonitor = monitor.name;
+        root.ddcSelector = selector;
+        return true;
+    }
+
+    function queueDdcDelta(monitor, delta) {
+        if (!root.selectDdcMonitor(monitor))
+            return;
+
+        root.ddcPendingAbsolute = -1;
+        root.ddcPendingDelta += delta;
+        root.startDdcWrite();
+    }
+
+    function queueDdcAbsolute(monitor, level) {
+        if (!root.selectDdcMonitor(monitor))
+            return;
+
+        root.ddcPendingAbsolute = Math.max(0, Math.min(100, Math.round(level)));
+        root.ddcPendingDelta = 0;
+        root.startDdcWrite();
+    }
+
+    function startDdcWrite() {
+        if (root.ddcWriter.running || root.ddcReader.running || root.ddcMonitor.length === 0)
+            return;
+
+        const command = ["ddcutil", "--noverify"].concat(root.ddcSelector).concat(["setvcp", "10"]);
+
+        if (root.ddcPendingAbsolute >= 0) {
+            command.push(String(root.ddcPendingAbsolute));
+            root.ddcPendingAbsolute = -1;
+        } else if (root.ddcPendingDelta !== 0) {
+            const delta = root.ddcPendingDelta;
+
+            root.ddcPendingDelta = 0;
+            command.push(delta > 0 ? "+" : "-", String(Math.abs(delta)));
+        } else {
+            return;
+        }
+
+        root.ddcWriter.command = command;
+        root.ddcWriter.running = true;
+    }
+
+    function startDdcRead() {
+        root.ddcReadLevel = -1;
+        root.ddcReader.command = ["ddcutil", "--terse"].concat(root.ddcSelector).concat(["getvcp", "10"]);
+        root.ddcReader.running = true;
+    }
+
+    function finishDdcBatch() {
+        if (root.ddcPendingAbsolute >= 0 || root.ddcPendingDelta !== 0) {
+            Qt.callLater(root.startDdcWrite);
+            return;
+        }
+
+        root.ddcMonitor = "";
+        root.ddcSelector = [];
+    }
+
+    property Process ddcWriter: Process {
+        onExited: function (exitCode) {
+            if (exitCode === 0) {
+                root.startDdcRead();
+                return;
+            }
+
+            root.finishDdcBatch();
+        }
+    }
+
+    property Process ddcReader: Process {
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const match = text.match(/VCP\s+10\s+C\s+(\d+)\s+(\d+)/);
+
+                if (!match)
+                    return;
+
+                const current = parseInt(match[1]);
+                const maximum = parseInt(match[2]);
+
+                if (!isNaN(current) && !isNaN(maximum) && maximum > 0)
+                    root.ddcReadLevel = Math.round(current / maximum * 100);
+            }
+        }
+
+        onExited: function (exitCode) {
+            if (exitCode === 0 && root.ddcReadLevel >= 0) {
+                root.updateExternalLevel(root.ddcMonitor, root.ddcReadLevel);
+                Core.OsdController.show("brightness", root.ddcReadLevel / 100, false, root.ddcMonitor);
+            }
+
+            root.finishDdcBatch();
+        }
+    }
+
+    property IpcHandler ipc: IpcHandler {
+        target: "brightness"
+
+        function step(direction: string): void {
+            root.step(direction === "up", "");
+        }
+    }
 
     // Timers
 

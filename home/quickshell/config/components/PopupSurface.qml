@@ -33,6 +33,8 @@ import "../core" as Core
 PanelWindow {
     id: root
 
+    screen: Core.PopupManager.screen
+
     // Public API
 
     property string popupId: ""

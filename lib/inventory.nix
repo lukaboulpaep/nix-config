@@ -32,6 +32,7 @@
         intelGraphics = true;
         camera = true;
         containers = true;
+        ddcBrightness = true;
       };
 
       desktop = {

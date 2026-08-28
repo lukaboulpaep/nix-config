@@ -14,6 +14,8 @@ Item {
 
     readonly property bool muted: Core.OsdController.muted
 
+    readonly property string monitor: Core.OsdController.monitor
+
     implicitWidth: row.implicitWidth
     implicitHeight: Core.Theme.moduleHeight
 
@@ -119,9 +121,9 @@ Item {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
 
-                width: parent.width * Services.BrightnessService.minimumFraction
+                width: parent.width * Services.BrightnessService.minimumFractionFor(root.monitor)
 
-                visible: root.kind === "brightness" && Services.BrightnessService.minimumFraction > 0
+                visible: root.kind === "brightness" && width > 0
             }
         }
 

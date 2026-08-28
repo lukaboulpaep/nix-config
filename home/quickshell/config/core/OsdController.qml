@@ -14,6 +14,10 @@ QtObject {
 
     property bool muted: false
 
+    // Empty means a global control such as audio and is shown on the primary
+    // bar. Monitor-specific controls such as brightness name their output.
+    property string monitor: ""
+
     readonly property bool active: root.kind !== ""
 
     // How long the readout stays up after the last change.
@@ -39,13 +43,13 @@ QtObject {
 
         repeat: false
 
-        onTriggered: root.kind = ""
+        onTriggered: root.hide()
     }
 
     // API
 
     // Raise (or refresh) an OSD.
-    function show(kind, value, muted) {
+    function show(kind, value, muted, monitor) {
         if (!root.armed)
             return;
         root.kind = kind;
@@ -54,11 +58,14 @@ QtObject {
 
         root.muted = muted === true;
 
+        root.monitor = monitor === undefined || monitor === null ? "" : String(monitor);
+
         root.hideTimer.restart();
     }
 
     function hide() {
         root.hideTimer.stop();
         root.kind = "";
+        root.monitor = "";
     }
 }

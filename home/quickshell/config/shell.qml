@@ -5,10 +5,22 @@ import Quickshell.Wayland
 
 import "components"
 import "modules"
+import "services" as Services
 
 Scope {
     id: root
-    Bar {}
+
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Bar {
+            required property var modelData
+
+            screen: modelData
+            primary: modelData.name === Services.DisplayService.primaryMonitor
+        }
+    }
+
     NetworkPopup {}
     BluetoothPopup {}
     BatteryPopup {}

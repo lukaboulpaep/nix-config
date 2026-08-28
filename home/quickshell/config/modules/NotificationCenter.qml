@@ -13,7 +13,9 @@ Item {
     implicitWidth: 30
     implicitHeight: Core.Theme.moduleHeight
 
-    readonly property bool menuOpen: Core.PopupManager.isOpen("notifications")
+    property var popupScreen: null
+
+    readonly property bool menuOpen: Core.PopupManager.isOpen("notifications", root.popupScreen)
 
     readonly property var list: Services.NotificationServer.notifications
 
@@ -147,7 +149,7 @@ Item {
 
             const p = root.mapToItem(null, 0, root.height);
 
-            Core.PopupManager.toggle("notifications", p.x + root.width / 2, p.y + Core.Theme.barMarginTop);
+            Core.PopupManager.toggle("notifications", p.x + root.width / 2, p.y + Core.Theme.barMarginTop, root.popupScreen);
         }
     }
 

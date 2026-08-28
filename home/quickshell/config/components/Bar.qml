@@ -13,6 +13,8 @@ import "../services" as Services
 PanelWindow {
     id: root
 
+    property bool primary: true
+
     anchors {
         top: true
         left: true
@@ -38,7 +40,12 @@ PanelWindow {
 
     readonly property bool launcherPopupOpen: Core.PopupManager.current === "launcher" || Core.PopupManager.current === "wallpaper" || Core.PopupManager.current === "theme"
 
-    readonly property bool wantExpanded: !root.launcherPopupOpen && (pillHover.hovered || Core.PopupManager.current !== "")
+    readonly property bool popupOnThisScreen: Core.PopupManager.current !== ""
+        && (Core.PopupManager.screen === null
+            ? root.primary
+            : Core.PopupManager.screen === root.screen)
+
+    readonly property bool wantExpanded: !root.launcherPopupOpen && (pillHover.hovered || root.popupOnThisScreen)
 
     property bool expanded: false
 
@@ -75,7 +82,11 @@ PanelWindow {
 
     // OSD takeover
 
-    readonly property bool osd: Core.OsdController.active && !root.expanded
+    readonly property bool osd: Core.OsdController.active
+        && !root.expanded
+        && (Core.OsdController.monitor.length > 0
+            ? Core.OsdController.monitor === root.screen.name
+            : root.primary)
 
     // One animated value drives the entire OSD morph
 
@@ -238,6 +249,8 @@ PanelWindow {
                 Modules.NotificationCenter {
                     id: notificationCenter
 
+                    popupScreen: root.screen
+
                     Layout.preferredWidth: 30 * root.reveal
 
                     Layout.preferredHeight: Core.Theme.moduleHeight
@@ -254,6 +267,8 @@ PanelWindow {
                 // Volume
 
                 Modules.Volume {
+                    popupScreen: root.screen
+
                     Layout.preferredWidth: 58 * root.reveal
 
                     Layout.preferredHeight: Core.Theme.moduleHeight
@@ -270,6 +285,8 @@ PanelWindow {
                 // Brightness
 
                 Modules.Brightness {
+                    popupScreen: root.screen
+
                     Layout.preferredWidth: 58 * root.reveal
 
                     Layout.preferredHeight: Core.Theme.moduleHeight
@@ -288,6 +305,8 @@ PanelWindow {
                 Modules.Clock {
                     id: clockModule
 
+                    popupScreen: root.screen
+
                     Layout.preferredWidth: clockModule.implicitWidth
 
                     Layout.preferredHeight: Core.Theme.moduleHeight
@@ -305,6 +324,8 @@ PanelWindow {
                 // Network
 
                 Modules.Network {
+                    popupScreen: root.screen
+
                     Layout.preferredWidth: 30 * root.reveal
 
                     Layout.preferredHeight: Core.Theme.moduleHeight
@@ -323,7 +344,25 @@ PanelWindow {
                 // Bluetooth
 
                 Modules.Bluetooth {
+                    popupScreen: root.screen
+
                     Layout.preferredWidth: 30 * root.reveal
+
+                    Layout.preferredHeight: Core.Theme.moduleHeight
+
+                    visible: root.modulesVisible
+
+                    opacity: root.reveal
+                }
+
+                Separator {
+                    reveal: root.reveal
+                }
+
+                // Display hot-plug preference
+
+                Modules.DisplayMode {
+                    Layout.preferredWidth: 76 * root.reveal
 
                     Layout.preferredHeight: Core.Theme.moduleHeight
 
@@ -339,6 +378,8 @@ PanelWindow {
                 // Battery
 
                 Modules.Battery {
+                    popupScreen: root.screen
+
                     Layout.preferredWidth: 58 * root.reveal
 
                     Layout.preferredHeight: Core.Theme.moduleHeight

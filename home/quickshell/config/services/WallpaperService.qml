@@ -137,4 +137,22 @@ QtObject {
             root.statePath
         ])
     }
+
+    // awww does not paint outputs that appear after the original image was
+    // applied. Re-issuing the current image without a transition covers every
+    // active output while keeping the saved selection unchanged.
+    function reapply() {
+        const path = root.current
+
+        if (!path || path.length === 0)
+            return
+
+        Quickshell.execDetached([
+            "awww",
+            "img",
+            path,
+            "--transition-type",
+            "none"
+        ])
+    }
 }

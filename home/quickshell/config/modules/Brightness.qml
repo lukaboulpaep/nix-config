@@ -14,9 +14,15 @@ Item {
     implicitWidth: 58
     implicitHeight: Core.Theme.moduleHeight
 
-    readonly property int level: Services.BrightnessService.level
+    property var popupScreen: null
 
-    readonly property bool menuOpen: Core.PopupManager.isOpen("brightness")
+    readonly property string monitorName: root.popupScreen ? root.popupScreen.name : ""
+
+    readonly property int level: Services.BrightnessService.levelFor(root.monitorName)
+
+    readonly property real fraction: root.level < 0 ? 0 : root.level / 100
+
+    readonly property bool menuOpen: Core.PopupManager.isOpen("brightness", root.popupScreen)
 
     Rectangle {
         anchors.fill: parent
@@ -40,7 +46,7 @@ Item {
 
         Text {
             // Ramps with the level instead of showing the same sun at 5% and at 100%.
-            text: Core.Icons.forBrightness(Services.BrightnessService.fraction)
+            text: Core.Icons.forBrightness(root.fraction)
 
             font.family: Core.Theme.fontFamily
 
@@ -57,7 +63,7 @@ Item {
         }
 
         Text {
-            text: root.level + "%"
+            text: root.level < 0 ? "--" : root.level + "%"
 
             font.family: Core.Theme.fontFamily
 
@@ -85,13 +91,13 @@ Item {
         onWheel: function (event) {
             if (event.angleDelta.y === 0)
                 return;
-            Services.BrightnessService.step(event.angleDelta.y > 0);
+            Services.BrightnessService.step(event.angleDelta.y > 0, root.monitorName);
         }
 
         onClicked: {
             const p = root.mapToItem(null, 0, root.height);
 
-            Core.PopupManager.toggle("brightness", p.x + root.width / 2, p.y + Core.Theme.barMarginTop);
+            Core.PopupManager.toggle("brightness", p.x + root.width / 2, p.y + Core.Theme.barMarginTop, root.popupScreen);
         }
     }
 }

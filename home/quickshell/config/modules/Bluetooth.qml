@@ -13,7 +13,9 @@ Item {
     implicitWidth: 30
     implicitHeight: Core.Theme.moduleHeight
 
-    readonly property bool menuOpen: Core.PopupManager.isOpen("bluetooth")
+    property var popupScreen: null
+
+    readonly property bool menuOpen: Core.PopupManager.isOpen("bluetooth", root.popupScreen)
 
     readonly property bool powered: Services.BluetoothService.powered
 
@@ -144,7 +146,7 @@ Item {
 
             const p = root.mapToItem(null, 0, root.height);
 
-            Core.PopupManager.toggle("bluetooth", p.x + root.width / 2, p.y + Core.Theme.barMarginTop);
+            Core.PopupManager.toggle("bluetooth", p.x + root.width / 2, p.y + Core.Theme.barMarginTop, root.popupScreen);
         }
 
         onWheel: function (event) {

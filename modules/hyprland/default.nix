@@ -1,4 +1,9 @@
-{ pkgs, ... }:
+{
+  hostConfig,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   programs.hyprland = {
@@ -14,6 +19,8 @@
   services.displayManager.defaultSession = "hyprland-uwsm";
 
   security.pam.services.hyprlock = { };
+
+  hardware.i2c.enable = hostConfig.features.ddcBrightness;
 
   environment.systemPackages = with pkgs; [
 
@@ -31,5 +38,6 @@
 
     # Wayland Utilities
     wayland-utils
-  ];
+  ]
+  ++ lib.optionals hostConfig.features.ddcBrightness [ ddcutil ];
 }

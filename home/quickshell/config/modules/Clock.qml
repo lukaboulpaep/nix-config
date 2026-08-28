@@ -15,10 +15,12 @@ Item {
 
     property bool showSeconds: false
 
+    property var popupScreen: null
+
     // Mirrors the bar's reveal: 0 while narrow, 1 while wide. Set by Bar.qml.
     property real reveal: 0
 
-    readonly property bool menuOpen: Core.PopupManager.isOpen("calendar")
+    readonly property bool menuOpen: Core.PopupManager.isOpen("calendar", root.popupScreen)
 
     // Now playing
     //
@@ -199,7 +201,7 @@ Item {
 
             const p = root.mapToItem(null, 0, root.height);
 
-            Core.PopupManager.toggle("calendar", p.x + root.width / 2, p.y + Core.Theme.barMarginTop);
+            Core.PopupManager.toggle("calendar", p.x + root.width / 2, p.y + Core.Theme.barMarginTop, root.popupScreen);
         }
     }
 }
