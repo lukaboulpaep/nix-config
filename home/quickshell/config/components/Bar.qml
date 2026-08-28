@@ -45,9 +45,22 @@ PanelWindow {
             ? root.primary
             : Core.PopupManager.screen === root.screen)
 
-    readonly property bool wantExpanded: !root.launcherPopupOpen && (pillHover.hovered || root.popupOnThisScreen)
+    // If a launcher closes while the pointer is still over the pill, keep the
+    // pill collapsed until the pointer leaves. Otherwise closing the launcher
+    // immediately looks like an unrelated request to expand the bar.
+    property bool launcherHoverSuppressed: false
+
+    readonly property bool wantExpanded: !root.launcherPopupOpen
+        && ((!root.launcherHoverSuppressed && pillHover.hovered) || root.popupOnThisScreen)
 
     property bool expanded: false
+
+    onLauncherPopupOpenChanged: {
+        if (root.launcherPopupOpen)
+            root.launcherHoverSuppressed = true
+        else if (!pillHover.hovered)
+            root.launcherHoverSuppressed = false
+    }
 
     onWantExpandedChanged: {
         if (root.wantExpanded) {
@@ -210,6 +223,13 @@ PanelWindow {
 
             HoverHandler {
                 id: pillHover
+
+                onHoveredChanged: {
+                    if (!pillHover.hovered)
+                        root.launcherHoverSuppressed = false
+                    else if (root.launcherPopupOpen)
+                        root.launcherHoverSuppressed = true
+                }
             }
 
             // CONTENT
