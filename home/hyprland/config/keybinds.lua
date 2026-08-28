@@ -12,7 +12,7 @@ hl.bind(mainMod .. " + T", hl.dsp.exec_cmd(vars.terminal))
 local closeWindowBind = hl.bind(mainMod .. " + Q", hl.dsp.window.close())
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(vars.fileManager))
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(vars.browser))
-hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(vars.menu))
+hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd(vars.menu))
 hl.bind(mainMod .. " + Z", hl.dsp.exec_cmd(vars.guieditor))
 
 -- Change Colorscheme
@@ -21,6 +21,7 @@ hl.bind(mainMod .. " + C", hl.dsp.exec_cmd(vars.colorscheme))
 -- Window Management
 
 hl.bind(mainMod .. " + F", hl.dsp.window.float({ action = "toggle" }))
+hl.bind(mainMod .. " + SHIFT + F", hl.dsp.exec_cmd("hyprctl dispatch fullscreen 0"))
 
 -- Screenshot
 
@@ -31,12 +32,35 @@ hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(vars.screenshot))
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd(vars.wallpaperScript))
 
 -- Focus Movement
-hl.bind(altMod .. " + H", hl.dsp.focus({ direction = "left" }))
-hl.bind(altMod .. " + J", hl.dsp.focus({ direction = "down" }))
-hl.bind(altMod .. " + K", hl.dsp.focus({ direction = "up" }))
-hl.bind(altMod .. " + L", hl.dsp.focus({ direction = "right" }))
+hl.bind(altMod .. " + H", hl.dsp.focus({ direction = "l" }))
+hl.bind(altMod .. " + J", hl.dsp.focus({ direction = "d" }))
+hl.bind(altMod .. " + K", hl.dsp.focus({ direction = "u" }))
+hl.bind(altMod .. " + L", hl.dsp.focus({ direction = "r" }))
+
+-- Monitor Focus
+hl.bind(mainMod .. " + ALT + H", hl.dsp.focus({ monitor = "l" }))
+hl.bind(mainMod .. " + ALT + J", hl.dsp.focus({ monitor = "d" }))
+hl.bind(mainMod .. " + ALT + K", hl.dsp.focus({ monitor = "u" }))
+hl.bind(mainMod .. " + ALT + L", hl.dsp.focus({ monitor = "r" }))
+hl.bind(mainMod .. " + ALT + HOME", hl.dsp.focus({ monitor = vars.internalMonitor }))
 
 -- Workspaces
+
+-- Move the entire current workspace between monitors. Directional selectors
+-- follow the physical monitor layout; HOME always returns it to the laptop.
+hl.bind(mainMod .. " + CTRL + H", hl.dsp.workspace.move({ monitor = "l" }))
+hl.bind(mainMod .. " + CTRL + J", hl.dsp.workspace.move({ monitor = "d" }))
+hl.bind(mainMod .. " + CTRL + K", hl.dsp.workspace.move({ monitor = "u" }))
+hl.bind(mainMod .. " + CTRL + L", hl.dsp.workspace.move({ monitor = "r" }))
+hl.bind(mainMod .. " + CTRL + HOME", hl.dsp.workspace.move({ monitor = vars.internalMonitor }))
+
+-- Move all numbered workspaces without replacing the single-workspace binds.
+hl.bind(mainMod .. " + CTRL + SHIFT + H", hl.dsp.exec_cmd("qs ipc call display moveAll l"))
+hl.bind(mainMod .. " + CTRL + SHIFT + J", hl.dsp.exec_cmd("qs ipc call display moveAll d"))
+hl.bind(mainMod .. " + CTRL + SHIFT + K", hl.dsp.exec_cmd("qs ipc call display moveAll u"))
+hl.bind(mainMod .. " + CTRL + SHIFT + L", hl.dsp.exec_cmd("qs ipc call display moveAll r"))
+hl.bind(mainMod .. " + CTRL + SHIFT + HOME", hl.dsp.exec_cmd("qs ipc call display moveAllHome"))
+hl.bind(mainMod .. " + TAB", hl.dsp.focus({ workspace = "previous" }))
 
 for i = 1, 10 do
 	local key = i % 10
