@@ -2,6 +2,7 @@
   inputs,
   lib,
   pkgs,
+  userConfig,
   ...
 }:
 
@@ -73,6 +74,9 @@ let
       if [[ -z "''${GONDOLIN_GUEST_DIR:-}" && -f "$default_guest_dir/manifest.json" ]]; then
         export GONDOLIN_GUEST_DIR="$default_guest_dir"
       fi
+
+      export PI_GONDOLIN_GIT_USER_NAME=${lib.escapeShellArg userConfig.fullName}
+      export PI_GONDOLIN_GIT_USER_EMAIL=${lib.escapeShellArg userConfig.email}
 
       exec ${pi}/bin/pi -e ${gondolinExtension} "$@"
     '';

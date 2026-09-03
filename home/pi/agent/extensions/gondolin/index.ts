@@ -91,6 +91,13 @@ function vmCpus(): number {
     : DEFAULT_VM_CPUS;
 }
 
+function configuredGitUser(): { name?: string; email?: string } {
+  return {
+    name: process.env.PI_GONDOLIN_GIT_USER_NAME?.trim() || undefined,
+    email: process.env.PI_GONDOLIN_GIT_USER_EMAIL?.trim() || undefined,
+  };
+}
+
 function configuredGuestImagePath(): string | undefined {
   const configured = process.env.GONDOLIN_GUEST_DIR?.trim();
   if (configured) return configured;
@@ -564,6 +571,7 @@ export default function (pi: ExtensionAPI) {
     const memory = vmMemory();
     const cpus = vmCpus();
     const gitRepositories = configuredGitRepositories(localCwd);
+    const gitUser = configuredGitUser();
     const imagePath = configuredGuestImagePath();
     const created = await VM.create({
       sessionLabel: `pi ${path.basename(localCwd)}`,
@@ -642,6 +650,12 @@ export default function (pi: ExtensionAPI) {
       fi
       if command -v git >/dev/null 2>&1; then
         git config --system --add safe.directory ${JSON.stringify(GUEST_WORKSPACE)} || true
+        if [ -n ${JSON.stringify(gitUser.name ?? "")} ]; then
+          git config --system user.name ${JSON.stringify(gitUser.name ?? "")} || true
+        fi
+        if [ -n ${JSON.stringify(gitUser.email ?? "")} ]; then
+          git config --system user.email ${JSON.stringify(gitUser.email ?? "")} || true
+        fi
       fi
       if [ -n \"$HOME\" ]; then
         mkdir -p \"$HOME\" || true
