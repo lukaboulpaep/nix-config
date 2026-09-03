@@ -38,9 +38,19 @@ PanelWindow {
 
     // Reveal state
 
-    readonly property bool launcherPopupOpen: Core.PopupManager.current === "launcher" || Core.PopupManager.current === "wallpaper" || Core.PopupManager.current === "theme"
+    readonly property string popupId: Core.PopupManager.current
 
-    readonly property bool popupOnThisScreen: Core.PopupManager.current !== ""
+    function isLauncherPopup(id) {
+        return id === "launcher" || id === "wallpaper" || id === "theme"
+    }
+
+    readonly property bool launcherPopupOpen: root.isLauncherPopup(root.popupId)
+
+    // Launchers are screenless overlay surfaces, not popups opened by a bar
+    // module. Excluding them here also prevents a transient primary-bar reveal
+    // while the bindings derived from PopupManager.current are being updated.
+    readonly property bool popupOnThisScreen: root.popupId !== ""
+        && !root.isLauncherPopup(root.popupId)
         && (Core.PopupManager.screen === null
             ? root.primary
             : Core.PopupManager.screen === root.screen)
@@ -56,10 +66,27 @@ PanelWindow {
     property bool expanded: false
 
     onLauncherPopupOpenChanged: {
-        if (root.launcherPopupOpen)
+        if (root.launcherPopupOpen) {
+            launcherHoverReleaseTimer.stop()
             root.launcherHoverSuppressed = true
-        else if (!pillHover.hovered)
-            root.launcherHoverSuppressed = false
+            return
+        }
+
+        // LauncherSurface remains mapped for its close animation. Releasing
+        // suppression immediately lets that unmap generate a one-frame hover
+        // on the bar beneath it.
+        launcherHoverReleaseTimer.restart()
+    }
+
+    Timer {
+        id: launcherHoverReleaseTimer
+
+        interval: Core.Theme.durClose + 16
+
+        onTriggered: {
+            if (!pillHover.hovered)
+                root.launcherHoverSuppressed = false
+        }
     }
 
     onWantExpandedChanged: {
@@ -225,10 +252,12 @@ PanelWindow {
                 id: pillHover
 
                 onHoveredChanged: {
-                    if (!pillHover.hovered)
-                        root.launcherHoverSuppressed = false
-                    else if (root.launcherPopupOpen)
+                    if (root.launcherPopupOpen) {
+                        launcherHoverReleaseTimer.stop()
                         root.launcherHoverSuppressed = true
+                    } else if (!pillHover.hovered) {
+                        root.launcherHoverSuppressed = false
+                    }
                 }
             }
 
