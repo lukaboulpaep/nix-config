@@ -37,7 +37,7 @@
 
         files = hostConfig.desktop.fileManagerDesktop;
 
-        archive = "org.gnome.FileRoller.desktop";
+        archive = hostConfig.desktop.archiveManagerDesktop;
       in
       {
         # Browser
@@ -80,6 +80,7 @@
 
         # Archives
         "application/zip" = archive;
+        "application/x-zip-compressed" = archive;
         "application/x-7z-compressed" = archive;
         "application/x-tar" = archive;
         "application/gzip" = archive;

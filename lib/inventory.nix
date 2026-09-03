@@ -44,6 +44,7 @@
         browserDesktop = "zen.desktop";
         fileManager = "thunar";
         fileManagerDesktop = "thunar.desktop";
+        archiveManagerDesktop = "org.gnome.FileRoller.desktop";
         mediaPlayerDesktop = "mpv.desktop";
         defaultWallpaper = "bluehour.jpg";
         screenShareMaxFps = 30;
