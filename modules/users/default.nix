@@ -15,8 +15,7 @@ let
       "wheel"
       "networkmanager"
     ]
-    ++ lib.optionals hostConfig.features.camera [ "video" ]
-    ++ lib.optionals hostConfig.features.agentSandbox [ "kvm" ];
+    ++ lib.optionals hostConfig.features.camera [ "video" ];
   };
 in
 {

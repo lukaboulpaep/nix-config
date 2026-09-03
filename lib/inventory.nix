@@ -33,7 +33,6 @@
         camera = true;
         containers = true;
         ddcBrightness = true;
-        agentSandbox = true;
       };
 
       desktop = {
