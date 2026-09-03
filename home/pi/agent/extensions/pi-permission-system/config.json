@@ -1,0 +1,59 @@
+{
+  "debugLog": false,
+  "permissionReviewLog": false,
+  "yoloMode": false,
+  "doublePressToConfirm": true,
+  "permission": {
+    "*": "ask",
+    "path": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.env.example": "allow",
+      "~/.ssh/*": "deny"
+    },
+    "path_write": {
+      ".pi/extensions/*": "deny",
+      ".pi/agents/*": "deny",
+      "~/.pi/agent/extensions/*": "deny"
+    },
+    "read": "allow",
+    "write": "allow",
+    "edit": "allow",
+    "grep": "allow",
+    "find": "allow",
+    "ls": "allow",
+    "external_directory": "allow",
+    "bash": {
+      "*": "allow",
+
+      "git push*": "ask",
+      "git merge*": "ask",
+      "git tag -d*": "ask",
+      "git stash drop*": "ask",
+      "git stash clear*": "ask",
+      "git reflog expire*": "ask",
+      "git gc*": "ask",
+      "git prune*": "ask",
+      "git worktree remove*": "ask",
+      "git worktree prune*": "ask",
+      "git remote remove*": "ask",
+      "git remote set-url*": "ask",
+      "git config*": "ask",
+
+      "rm *": "ask",
+      "rmdir *": "ask",
+      "truncate *": "ask",
+      "shred *": "ask",
+      "dd *": "ask",
+      "mkfs*": "ask",
+      "wipefs*": "ask"
+    },
+    "mcp": {
+      "*": "ask"
+    },
+    "skill": {
+      "*": "allow"
+    }
+  }
+}

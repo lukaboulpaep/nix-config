@@ -41,6 +41,9 @@
   ]
   ++ lib.optionals hostConfig.features.containers [
     ../../modules/containers
+  ]
+  ++ lib.optionals hostConfig.features.agentSandbox [
+    ../../modules/agent-sandbox
   ];
 
   networking.hostName = hostName;

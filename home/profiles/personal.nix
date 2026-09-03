@@ -7,6 +7,7 @@
 {
   imports = [
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
+    ../pi
   ];
 
   home.packages = with pkgs; [

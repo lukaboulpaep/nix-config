@@ -33,6 +33,7 @@
         camera = true;
         containers = true;
         ddcBrightness = true;
+        agentSandbox = true;
       };
 
       desktop = {
@@ -54,6 +55,8 @@
         backend = "ipu6";
         platform = "ipu6epmtl";
       };
+
+      hardware.virtualizationModule = "kvm-intel";
 
       keyboards = {
         externalUS = [
