@@ -27,6 +27,7 @@
     "bash": {
       "*": "allow",
 
+      "git -c*": "ask",
       "git push*": "ask",
       "git merge*": "ask",
       "git tag -d*": "ask",
