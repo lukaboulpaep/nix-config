@@ -19,6 +19,7 @@ import {
   isWriteFlag,
   RealFSProvider,
   ShadowProvider,
+  type SecretDefinition,
   VM,
 } from "@earendil-works/gondolin";
 import type {
@@ -52,6 +53,11 @@ const DEFAULT_GREP_LIMIT = 100;
 const DEFAULT_VM_MEMORY = "4G";
 const DEFAULT_VM_CPUS = 4;
 const ALLOWED_SSH_HOSTS = ["github.com"];
+const GITHUB_SECRET_HOSTS = [
+  "api.github.com",
+  "github.com",
+  "uploads.github.com",
+];
 const DEFAULT_HTTP_HOSTS = [
   "api.github.com",
   "cache.nixos.org",
@@ -63,6 +69,7 @@ const DEFAULT_HTTP_HOSTS = [
   "raw.githubusercontent.com",
   "releases.nixos.org",
   "tarballs.nixos.org",
+  "uploads.github.com",
 ];
 const NIX_CONFIG = [
   "experimental-features = nix-command flakes",
@@ -77,6 +84,18 @@ function configuredHttpHosts(): string[] {
     .map((value) => value.trim())
     .filter(Boolean);
   return [...new Set([...DEFAULT_HTTP_HOSTS, ...extraHosts])];
+}
+
+function configuredHttpSecrets(): Record<string, SecretDefinition> {
+  const githubToken = process.env.PI_GONDOLIN_GITHUB_TOKEN?.trim();
+  if (!githubToken) return {};
+
+  return {
+    GH_TOKEN: {
+      hosts: GITHUB_SECRET_HOSTS,
+      value: githubToken,
+    },
+  };
 }
 
 function vmMemory(): string {
@@ -567,6 +586,7 @@ export default function (pi: ExtensionAPI) {
       // binary substitutes. Keep the default list focused on common flake
       // infrastructure; PI_GONDOLIN_HTTP_HOSTS can add project-specific hosts.
       allowedHosts: configuredHttpHosts(),
+      secrets: configuredHttpSecrets(),
     });
     const memory = vmMemory();
     const cpus = vmCpus();
