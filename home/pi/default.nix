@@ -60,7 +60,9 @@ let
         krunfwVersion = "v5.2.1";
       };
       rootfs.label = "gondolin-root";
-      runtimeDefaults.rootfsMode = "cow";
+      # QEMU's volatile snapshot mode avoids creating a qcow2 overlay for each
+      # Pi session. Guest writes remain ephemeral, just as they are with COW.
+      runtimeDefaults.rootfsMode = "memory";
     }
   );
 

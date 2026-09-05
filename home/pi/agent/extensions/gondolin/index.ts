@@ -50,8 +50,8 @@ import {
 
 const GUEST_WORKSPACE = "/workspace";
 const DEFAULT_GREP_LIMIT = 100;
-const DEFAULT_VM_MEMORY = "4G";
-const DEFAULT_VM_CPUS = 4;
+const DEFAULT_VM_MEMORY = "2G";
+const DEFAULT_VM_CPUS = 2;
 const ALLOWED_SSH_HOSTS = ["github.com"];
 const GITHUB_SECRET_HOSTS = [
   "api.github.com",
@@ -597,7 +597,12 @@ export default function (pi: ExtensionAPI) {
       sessionLabel: `pi ${path.basename(localCwd)}`,
       memory,
       cpus,
-      ...(imagePath ? { sandbox: { imagePath } } : {}),
+      sandbox: {
+        // Serial kernel logging is expensive on this Linux/QEMU path. Keep a
+        // console for diagnostics while suppressing normal boot chatter.
+        append: "console=ttyS0 quiet loglevel=0 initramfs_async=1",
+        ...(imagePath ? { imagePath } : {}),
+      },
       httpHooks,
       env: {
         ...env,
@@ -712,12 +717,23 @@ export default function (pi: ExtensionAPI) {
     return vmStarting;
   }
 
-  pi.on("session_start", async (_event, ctx) => {
-    await ensureVm(ctx);
+  pi.on("session_start", (_event, ctx) => {
+    // Warm the VM while the user reads the prompt or writes their first
+    // request. Tools still await the same single-flight promise if boot has
+    // not completed, but Pi's own startup no longer blocks on a cold VM boot.
+    void ensureVm(ctx).catch((error) => {
+      ctx.ui.setStatus("gondolin", undefined);
+      ctx.ui.notify(
+        `Gondolin VM failed to start: ${error instanceof Error ? error.message : String(error)}`,
+        "error",
+      );
+    });
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
-    const activeVm = vm;
+    const pendingVm = vmStarting;
+    const activeVm =
+      vm ?? (pendingVm ? await pendingVm.catch(() => undefined) : undefined);
     vm = undefined;
     vmStarting = undefined;
     if (!activeVm) return;
