@@ -3,7 +3,6 @@
   inputs,
   lib,
   pkgs,
-  userConfig,
   ...
 }:
 
@@ -67,30 +66,8 @@ let
   );
 
   piGondolin = pkgs.writeShellApplication {
-    # Install the broker as the normal `pi` command. Naming this
-    # `pi-gondolin` allowed the system-level `pi` binary to bypass the host
-    # credential setup while still auto-loading the Gondolin extension.
     name = "pi";
-    runtimeInputs = [
-      pkgs.gh
-      pkgs.openssh
-    ];
     text = ''
-      if [[ -n "''${SSH_AUTH_SOCK:-}" ]]; then
-        ssh-add -l >/dev/null 2>&1 || true
-      fi
-
-      # Keep the real GitHub token on the host. The Gondolin extension gives
-      # the guest a random GH_TOKEN placeholder and substitutes the credential
-      # only in requests to the explicitly allowed GitHub hosts.
-      if [[ -z "''${PI_GONDOLIN_GITHUB_TOKEN:-}" ]]; then
-        github_token="$(${pkgs.gh}/bin/gh auth token --hostname github.com 2>/dev/null || true)"
-        if [[ -n "$github_token" ]]; then
-          export PI_GONDOLIN_GITHUB_TOKEN="$github_token"
-        fi
-        unset github_token
-      fi
-
       if [[ -z "''${GONDOLIN_GUEST_DIR:-}" ]]; then
         default_guest_dir="''${XDG_CACHE_HOME:-$HOME/.cache}/pi-gondolin/guest"
         expected_builder=${lib.escapeShellArg "${piGondolinBuildImage}"}
@@ -109,10 +86,11 @@ let
         export GONDOLIN_GUEST_DIR="$default_guest_dir"
       fi
 
-      export PI_GONDOLIN_GIT_USER_NAME=${lib.escapeShellArg userConfig.fullName}
-      export PI_GONDOLIN_GIT_USER_EMAIL=${lib.escapeShellArg userConfig.email}
-
-      exec ${pi}/bin/pi -e ${gondolinExtension} "$@"
+      # Use the deployed path so Pi labels the top-level index as "gondolin"
+      # rather than exposing an internal source directory in the startup UI.
+      # Fail closed even if extension loading itself fails.
+      exec ${pi}/bin/pi --no-builtin-tools \
+        -e "$HOME/.pi/agent/extensions/gondolin/index.ts" "$@"
     '';
   };
 
@@ -156,13 +134,16 @@ let
     src = lib.fileset.toSource {
       root = ./agent/extensions/gondolin;
       fileset = lib.fileset.unions [
+        ./agent/extensions/gondolin/src
         ./agent/extensions/gondolin/index.ts
+        ./agent/extensions/gondolin/gondolin.json
         ./agent/extensions/gondolin/package.json
         ./agent/extensions/gondolin/package-lock.json
+        ./agent/extensions/gondolin/tsconfig.json
       ];
     };
 
-    npmDepsHash = "sha256-sQTfKtegh1HloK9zxlbYkJb3vW7yBfYYM8DYFu2oHZc=";
+    npmDepsHash = "sha256-vfyL51pzkHUwQGfeTRUt4FkmfmEGa5NTAXwUf5m7QQg=";
     npmFlags = [ "--ignore-scripts" ];
     dontNpmBuild = true;
 
@@ -170,7 +151,7 @@ let
       runHook preInstall
 
       mkdir -p "$out"
-      cp -R index.ts package.json package-lock.json node_modules "$out/"
+      cp -R src index.ts gondolin.json package.json package-lock.json tsconfig.json node_modules "$out/"
 
       runHook postInstall
     '';
@@ -188,6 +169,8 @@ in
   # The package remains host-side trusted code; only its policy is stored under
   # extensions/pi-permission-system.
   home.file.".pi/agent/settings.json".text = builtins.toJSON {
+    defaultProvider = "openai";
+    defaultModel = "gpt-5.6-sol";
     packages = [ "npm:@gotgenes/pi-permission-system@30.0.0" ];
   };
 

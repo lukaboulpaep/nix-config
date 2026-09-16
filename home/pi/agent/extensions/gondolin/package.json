@@ -6,7 +6,8 @@
   "scripts": {
     "clean": "echo 'nothing to clean'",
     "build": "echo 'nothing to build'",
-    "check": "echo 'nothing to check'"
+    "check": "tsc --noEmit",
+    "test": "node --import ./src/test-module-hooks.mjs --test --experimental-strip-types src/tools.test.ts"
   },
   "pi": {
     "extensions": [
@@ -15,5 +16,9 @@
   },
   "dependencies": {
     "@earendil-works/gondolin": "0.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "typescript": "^7.0.2"
   }
 }

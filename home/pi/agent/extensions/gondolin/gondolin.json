@@ -1,0 +1,11 @@
+{
+  "vm": {
+    "cpus": 2,
+    "memory": "2G",
+    "workspace": "/workspace"
+  },
+  "network": {
+    "httpHosts": [],
+    "sshHosts": []
+  }
+}
