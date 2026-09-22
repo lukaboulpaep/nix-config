@@ -39,8 +39,8 @@
       source = ../assets/profile/face.jpg;
       force = true;
     };
-    "Wallpapers/bluehour.jpg".source = ../assets/wallpapers/bluehour.jpg;
-    "Wallpapers/corals-fish-underwater.jpg".source = ../assets/wallpapers/corals-fish-underwater.jpg;
+    "Wallpapers/pink-aesthetic.jpg".source = ../assets/wallpapers/pink-aesthetic.jpg;
+    "Wallpapers/vortex.jpg".source = ../assets/wallpapers/vortex.jpg;
   };
 
   xdg.systemDirs.data = lib.optionals pkgs.stdenv.isLinux [

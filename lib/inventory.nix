@@ -46,7 +46,7 @@
         fileManagerDesktop = "thunar.desktop";
         archiveManagerDesktop = "org.gnome.FileRoller.desktop";
         mediaPlayerDesktop = "mpv.desktop";
-        defaultWallpaper = "bluehour.jpg";
+        defaultWallpaper = "vortex.jpg";
         screenShareMaxFps = 30;
       };
 
