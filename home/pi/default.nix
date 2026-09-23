@@ -37,6 +37,7 @@ let
         version = "3.23.0";
         kernelPackage = "linux-virt";
         kernelImage = "vmlinuz-virt";
+        # Shared baseline for every sandbox; no automatic project provisioning.
         rootfsPackages = [
           "linux-virt"
           "rng-tools"
@@ -44,14 +45,9 @@ let
           "ca-certificates"
           "curl"
           "e2fsprogs"
-          "nodejs"
-          "npm"
-          "uv"
-          "python3"
           "openssh"
           "git"
           "github-cli"
-          "nix"
           "jq"
           "ripgrep"
         ];

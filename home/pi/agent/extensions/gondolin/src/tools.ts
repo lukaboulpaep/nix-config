@@ -1,5 +1,7 @@
 // Adapted from Pi 0.85.0 examples/extensions/gondolin (MIT).
 import path from "node:path";
+import { StringDecoder } from "node:string_decoder";
+import { setImmediate } from "node:timers/promises";
 import type { VM } from "@earendil-works/gondolin";
 import {
   type BashOperations,
@@ -14,6 +16,7 @@ import {
   DEFAULT_MAX_BYTES,
   type EditOperations,
   type FindOperations,
+  type FindToolInput,
   formatSize,
   type GrepToolDetails,
   type GrepToolInput,
@@ -41,33 +44,54 @@ function toPosix(value: string): string {
 
 function isInsideHostPath(root: string, value: string): boolean {
   const relativePath = path.relative(root, value);
-  return relativePath === "" || (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
+  return (
+    relativePath === "" ||
+    (!relativePath.startsWith("..") && !path.isAbsolute(relativePath))
+  );
 }
 
-function hostPathToGuest(localCwd: string, guestWorkspace: string, hostPath: string): string {
+function hostPathToGuest(
+  localCwd: string,
+  guestWorkspace: string,
+  hostPath: string,
+): string {
   const relativePath = path.relative(localCwd, hostPath);
   if (!isInsideHostPath(localCwd, hostPath)) return toPosix(hostPath);
-  return relativePath ? path.posix.join(guestWorkspace, toPosix(relativePath)) : guestWorkspace;
+  return relativePath
+    ? path.posix.join(guestWorkspace, toPosix(relativePath))
+    : guestWorkspace;
 }
 
-function toGuestPath(localCwd: string, guestWorkspace: string, inputPath: string): string {
+function toGuestPath(
+  localCwd: string,
+  guestWorkspace: string,
+  inputPath: string,
+): string {
   const trimmed = stripAtPrefix(inputPath.trim());
   if (!trimmed) return guestWorkspace;
   if (path.isAbsolute(trimmed)) {
-    if (isInsideHostPath(localCwd, trimmed)) return hostPathToGuest(localCwd, guestWorkspace, trimmed);
+    if (isInsideHostPath(localCwd, trimmed))
+      return hostPathToGuest(localCwd, guestWorkspace, trimmed);
     return path.posix.resolve("/", toPosix(trimmed));
   }
   return path.posix.resolve(guestWorkspace, toPosix(trimmed));
 }
 
-function createGondolinReadOps(vm: () => VM, localCwd: string, guestWorkspace: string): ReadOperations {
+function createGondolinReadOps(
+  vm: () => VM,
+  localCwd: string,
+  guestWorkspace: string,
+): ReadOperations {
   return {
-    readFile: async (filePath) => vm().fs.readFile(toGuestPath(localCwd, guestWorkspace, filePath)),
+    readFile: async (filePath) =>
+      vm().fs.readFile(toGuestPath(localCwd, guestWorkspace, filePath)),
     access: async (filePath) => {
       await vm().fs.access(toGuestPath(localCwd, guestWorkspace, filePath));
     },
     detectImageMimeType: async (filePath) => {
-      const ext = path.posix.extname(toGuestPath(localCwd, guestWorkspace, filePath)).toLowerCase();
+      const ext = path.posix
+        .extname(toGuestPath(localCwd, guestWorkspace, filePath))
+        .toLowerCase();
       if (ext === ".png") return "image/png";
       if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
       if (ext === ".gif") return "image/gif";
@@ -77,18 +101,32 @@ function createGondolinReadOps(vm: () => VM, localCwd: string, guestWorkspace: s
   };
 }
 
-function createGondolinWriteOps(vm: () => VM, localCwd: string, guestWorkspace: string): WriteOperations {
+function createGondolinWriteOps(
+  vm: () => VM,
+  localCwd: string,
+  guestWorkspace: string,
+): WriteOperations {
   return {
     writeFile: async (filePath, content) => {
-      await vm().fs.writeFile(toGuestPath(localCwd, guestWorkspace, filePath), content, { encoding: "utf8" });
+      await vm().fs.writeFile(
+        toGuestPath(localCwd, guestWorkspace, filePath),
+        content,
+        { encoding: "utf8" },
+      );
     },
     mkdir: async (dirPath) => {
-      await vm().fs.mkdir(toGuestPath(localCwd, guestWorkspace, dirPath), { recursive: true });
+      await vm().fs.mkdir(toGuestPath(localCwd, guestWorkspace, dirPath), {
+        recursive: true,
+      });
     },
   };
 }
 
-function createGondolinEditOps(vm: () => VM, localCwd: string, guestWorkspace: string): EditOperations {
+function createGondolinEditOps(
+  vm: () => VM,
+  localCwd: string,
+  guestWorkspace: string,
+): EditOperations {
   const readOps = createGondolinReadOps(vm, localCwd, guestWorkspace);
   const writeOps = createGondolinWriteOps(vm, localCwd, guestWorkspace);
   return {
@@ -98,7 +136,11 @@ function createGondolinEditOps(vm: () => VM, localCwd: string, guestWorkspace: s
   };
 }
 
-function createGondolinLsOps(vm: () => VM, localCwd: string, guestWorkspace: string): LsOperations {
+function createGondolinLsOps(
+  vm: () => VM,
+  localCwd: string,
+  guestWorkspace: string,
+): LsOperations {
   return {
     exists: async (filePath) => {
       try {
@@ -108,8 +150,10 @@ function createGondolinLsOps(vm: () => VM, localCwd: string, guestWorkspace: str
         return false;
       }
     },
-    stat: async (filePath) => vm().fs.stat(toGuestPath(localCwd, guestWorkspace, filePath)),
-    readdir: async (dirPath) => vm().fs.listDir(toGuestPath(localCwd, guestWorkspace, dirPath)),
+    stat: async (filePath) =>
+      vm().fs.stat(toGuestPath(localCwd, guestWorkspace, filePath)),
+    readdir: async (dirPath) =>
+      vm().fs.listDir(toGuestPath(localCwd, guestWorkspace, dirPath)),
   };
 }
 
@@ -119,33 +163,76 @@ async function walkGuestFiles(
   visit: (guestPath: string, relativePath: string) => Promise<boolean>,
   signal?: AbortSignal,
 ): Promise<boolean> {
-  if (signal?.aborted) throw new Error("Operation aborted");
+  signal?.throwIfAborted();
   const stat = await vm().fs.stat(root, { signal });
+  signal?.throwIfAborted();
+  // Explicit files remain searchable, even if ignored during directory searches.
   if (!stat.isDirectory()) return visit(root, path.posix.basename(root));
 
-  const walkDirectory = async (dir: string, relativeDir: string): Promise<boolean> => {
-    if (signal?.aborted) throw new Error("Operation aborted");
-    const entries = await vm().fs.listDir(dir, { signal });
-    for (const entry of entries) {
-      if (entry === ".git" || entry === "node_modules") continue;
-      const guestPath = path.posix.join(dir, entry);
-      const relativePath = relativeDir ? path.posix.join(relativeDir, entry) : entry;
-      let entryStat: Awaited<ReturnType<VM["fs"]["stat"]>>;
-      try {
-        entryStat = await vm().fs.stat(guestPath, { signal });
-      } catch {
+  // ripgrep is part of the Nix-declared guest image. Enumerate in the guest so
+  // nested/parent ignore rules and negations use ripgrep's native semantics.
+  const controller = new AbortController();
+  const processSignal = signal
+    ? AbortSignal.any([signal, controller.signal])
+    : controller.signal;
+  const proc = vm().exec(
+    [
+      "/usr/bin/rg",
+      "--files",
+      "--null",
+      "--hidden",
+      "--no-require-git",
+      "--no-config",
+      "--glob",
+      "!.git",
+      "--glob",
+      "!node_modules",
+      "--",
+      root,
+    ],
+    { cwd: root, signal: processSignal, stdout: "pipe", stderr: "pipe" },
+  );
+  // Attach a rejection handler immediately, including while a file is read.
+  const completion = proc.then(
+    (result) => ({ result }),
+    (error: unknown) => ({ error }),
+  );
+  const decoder = new StringDecoder("utf8");
+  let pending = "";
+  let stderr = "";
+  try {
+    for await (const chunk of proc.output()) {
+      signal?.throwIfAborted();
+      if (chunk.stream === "stderr") {
+        stderr = (stderr + chunk.data.toString()).slice(0, DEFAULT_MAX_BYTES);
         continue;
       }
-      if (entryStat.isDirectory()) {
-        if (!(await walkDirectory(guestPath, relativePath))) return false;
-      } else if (!(await visit(guestPath, relativePath))) {
-        return false;
+      pending += decoder.write(chunk.data);
+      let end: number;
+      while ((end = pending.indexOf("\0")) !== -1) {
+        signal?.throwIfAborted();
+        const guestPath = pending.slice(0, end);
+        pending = pending.slice(end + 1);
+        if (!(await visit(guestPath, path.posix.relative(root, guestPath)))) {
+          signal?.throwIfAborted();
+          return false;
+        }
       }
     }
+    signal?.throwIfAborted();
+    const completed = await completion;
+    if ("error" in completed) throw completed.error;
+    if (completed.result.exitCode !== 0 && completed.result.exitCode !== 1) {
+      throw new Error(
+        `Guest file search failed: ${stderr.trim() || completed.result.exitCode}`,
+      );
+    }
     return true;
-  };
-
-  return walkDirectory(root, "");
+  } finally {
+    // Stop enumeration on a result limit, cancellation, or a visitor failure.
+    controller.abort();
+    await completion;
+  }
 }
 
 function matchesToolGlob(relativePath: string, pattern: string): boolean {
@@ -156,36 +243,59 @@ function matchesToolGlob(relativePath: string, pattern: string): boolean {
       path.posix.matchesGlob(relativePath, `**/${normalizedPattern}`)
     );
   }
-  return path.posix.matchesGlob(path.posix.basename(relativePath), normalizedPattern);
+  return path.posix.matchesGlob(
+    path.posix.basename(relativePath),
+    normalizedPattern,
+  );
 }
 
-function createGondolinFindOps(vm: () => VM, localCwd: string, guestWorkspace: string): FindOperations {
+function createGondolinFindOps(
+  vm: () => VM,
+  localCwd: string,
+  guestWorkspace: string,
+  signal?: AbortSignal,
+): FindOperations {
   return {
     exists: async (filePath) => {
+      signal?.throwIfAborted();
       try {
-        await vm().fs.access(toGuestPath(localCwd, guestWorkspace, filePath));
+        await vm().fs.access(toGuestPath(localCwd, guestWorkspace, filePath), {
+          signal,
+        });
         return true;
       } catch {
+        signal?.throwIfAborted();
         return false;
       }
     },
     glob: async (pattern, cwd, options) => {
       const root = toGuestPath(localCwd, guestWorkspace, cwd);
       const results: string[] = [];
-      await walkGuestFiles(vm, root, async (guestPath, relativePath) => {
-        if (results.length >= options.limit) return false;
-        if (matchesToolGlob(relativePath, pattern)) results.push(guestPath);
-        return results.length < options.limit;
-      });
+      await walkGuestFiles(
+        vm,
+        root,
+        async (guestPath, relativePath) => {
+          if (results.length >= options.limit) return false;
+          if (matchesToolGlob(relativePath, pattern)) results.push(guestPath);
+          return results.length < options.limit;
+        },
+        signal,
+      );
+      signal?.throwIfAborted();
       return results;
     },
   };
 }
 
-function createLineMatcher(pattern: string, literal: boolean | undefined, ignoreCase: boolean | undefined) {
+function createLineMatcher(
+  pattern: string,
+  literal: boolean | undefined,
+  ignoreCase: boolean | undefined,
+) {
   if (literal) {
     const needle = ignoreCase ? pattern.toLowerCase() : pattern;
-    return (line: string) => (ignoreCase ? line.toLowerCase() : line).includes(needle);
+    return (line: string) =>
+      (ignoreCase ? line.toLowerCase() : line).includes(needle);
   }
   const regex = new RegExp(pattern, ignoreCase ? "i" : undefined);
   return (line: string) => regex.test(line);
@@ -199,10 +309,16 @@ function appendGrepBlock(params: {
   contextLines: number;
 }): boolean {
   let linesTruncated = false;
-  const start = params.contextLines > 0 ? Math.max(0, params.lineIndex - params.contextLines) : params.lineIndex;
+  const start =
+    params.contextLines > 0
+      ? Math.max(0, params.lineIndex - params.contextLines)
+      : params.lineIndex;
   const end =
     params.contextLines > 0
-      ? Math.min(params.lines.length - 1, params.lineIndex + params.contextLines)
+      ? Math.min(
+          params.lines.length - 1,
+          params.lineIndex + params.contextLines,
+        )
       : params.lineIndex;
 
   for (let index = start; index <= end; index++) {
@@ -210,7 +326,9 @@ function appendGrepBlock(params: {
     const { text, wasTruncated } = truncateLine(rawLine.replace(/\r/g, ""));
     if (wasTruncated) linesTruncated = true;
     const separator = index === params.lineIndex ? ":" : "-";
-    params.outputLines.push(`${params.relativePath}${separator}${index + 1}${separator} ${text}`);
+    params.outputLines.push(
+      `${params.relativePath}${separator}${index + 1}${separator} ${text}`,
+    );
   }
   return linesTruncated;
 }
@@ -222,11 +340,17 @@ async function executeGondolinGrep(
   params: GrepToolInput,
   signal?: AbortSignal,
 ): Promise<TextToolResult<GrepToolDetails>> {
+  signal?.throwIfAborted();
   const root = toGuestPath(localCwd, guestWorkspace, params.path ?? ".");
   const rootStat = await vm().fs.stat(root, { signal });
   const rootIsDirectory = rootStat.isDirectory();
-  const matcher = createLineMatcher(params.pattern, params.literal, params.ignoreCase);
-  const contextLines = params.context && params.context > 0 ? params.context : 0;
+  const matcher = createLineMatcher(
+    params.pattern,
+    params.literal,
+    params.ignoreCase,
+  );
+  const contextLines =
+    params.context && params.context > 0 ? params.context : 0;
   const effectiveLimit = Math.max(1, params.limit ?? DEFAULT_GREP_LIMIT);
   const outputLines: string[] = [];
   const details: GrepToolDetails = {};
@@ -239,20 +363,40 @@ async function executeGondolinGrep(
     root,
     async (guestPath, relativePath) => {
       if (matchCount >= effectiveLimit) return false;
-      if (params.glob && !matchesToolGlob(relativePath, params.glob)) return true;
+      if (params.glob && !matchesToolGlob(relativePath, params.glob))
+        return true;
       let content: string;
       try {
-        content = await vm().fs.readFile(guestPath, { encoding: "utf8", signal });
+        content = await vm().fs.readFile(guestPath, {
+          encoding: "utf8",
+          signal,
+        });
       } catch {
+        signal?.throwIfAborted();
         return true;
       }
-      const lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-      const displayPath = rootIsDirectory ? relativePath : path.posix.basename(guestPath);
+      const lines = content
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .split("\n");
+      const displayPath = rootIsDirectory
+        ? relativePath
+        : path.posix.basename(guestPath);
       for (let index = 0; index < lines.length; index++) {
-        if (signal?.aborted) throw new Error("Operation aborted");
+        // Let cancellation events run during CPU-heavy scans of large files.
+        if (index % 1024 === 0) await setImmediate(undefined, { signal });
+        signal?.throwIfAborted();
         if (!matcher(lines[index] ?? "")) continue;
         matchCount++;
-        if (appendGrepBlock({ outputLines, lines, relativePath: displayPath, lineIndex: index, contextLines })) {
+        if (
+          appendGrepBlock({
+            outputLines,
+            lines,
+            relativePath: displayPath,
+            lineIndex: index,
+            contextLines,
+          })
+        ) {
           linesTruncated = true;
         }
         if (matchCount >= effectiveLimit) {
@@ -265,10 +409,16 @@ async function executeGondolinGrep(
     signal,
   );
 
-  if (matchCount === 0) return { content: [{ type: "text", text: "No matches found" }], details: undefined };
+  if (matchCount === 0)
+    return {
+      content: [{ type: "text", text: "No matches found" }],
+      details: undefined,
+    };
 
   const rawOutput = outputLines.join("\n");
-  const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER });
+  const truncation = truncateHead(rawOutput, {
+    maxLines: Number.MAX_SAFE_INTEGER,
+  });
   const notices: string[] = [];
   let output = truncation.content;
 
@@ -342,7 +492,12 @@ export function createGuestTools(
   localCwd: string,
   guestWorkspace: string,
 ): { bashOperations: BashOperations; tools: ToolDefinition[] } {
-  const bashOperations = createGondolinBashOps(vm, localCwd, guestWorkspace, "/bin/bash");
+  const bashOperations = createGondolinBashOps(
+    vm,
+    localCwd,
+    guestWorkspace,
+    "/bin/bash",
+  );
 
   return {
     bashOperations,
@@ -363,9 +518,22 @@ export function createGuestTools(
       createLsTool(guestWorkspace, {
         operations: createGondolinLsOps(vm, localCwd, guestWorkspace),
       }),
-      createFindTool(guestWorkspace, {
-        operations: createGondolinFindOps(vm, localCwd, guestWorkspace),
-      }),
+      {
+        ...createFindTool(guestWorkspace),
+        execute: (id: string, params: FindToolInput, signal, onUpdate) => {
+          // FindOperations has no signal parameter. Capture it per invocation,
+          // never on the shared tool, so concurrent searches stay independent.
+          const tool = createFindTool(guestWorkspace, {
+            operations: createGondolinFindOps(
+              vm,
+              localCwd,
+              guestWorkspace,
+              signal,
+            ),
+          });
+          return tool.execute(id, params, signal, onUpdate);
+        },
+      },
       {
         ...createGrepTool(guestWorkspace),
         execute: (_id: string, params: GrepToolInput, signal?: AbortSignal) =>

@@ -1,5 +1,15 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import { spawn } from "node:child_process";
+import type { VM } from "@earendil-works/gondolin";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
@@ -18,6 +28,7 @@ async function executeTool(
   guest: GuestTools,
   name: string,
   params: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<string> {
   const tool: ToolDefinition | undefined = guest.tools.find(
     (candidate) => candidate.name === name,
@@ -27,7 +38,7 @@ async function executeTool(
   const result = await tool.execute(
     "test-call",
     params,
-    undefined,
+    signal,
     undefined,
     TEST_CONTEXT,
   );
@@ -206,3 +217,180 @@ describe(
     });
   },
 );
+
+// Exercise the adapters with real ripgrep and a temporary filesystem, without
+// requiring nested virtualization. Production still executes only via VM APIs.
+describe("search ignore rules and cancellation", () => {
+  let workspace: string;
+  let guest: GuestTools;
+  let lastSignal: AbortSignal | undefined;
+  let abortRead: AbortController | undefined;
+  let abortEnumeration: AbortController | undefined;
+  let executions: number;
+
+  before(async () => {
+    workspace = await mkdtemp(path.join(tmpdir(), "gondolin-search-"));
+    await mkdir(path.join(workspace, "sub"));
+    await mkdir(path.join(workspace, "ignored"));
+    await writeFile(
+      path.join(workspace, ".gitignore"),
+      "*.log\n!keep.log\nignored/\n/root.txt\n",
+    );
+    await writeFile(
+      path.join(workspace, "sub/.gitignore"),
+      "private.txt\n!nested.log\n",
+    );
+    for (const file of [
+      "drop.log",
+      "keep.log",
+      "root.txt",
+      "visible.txt",
+      "ignored/secret.txt",
+      "sub/private.txt",
+      "sub/nested.log",
+      "sub/drop.log",
+      "sub/root.txt",
+      "sub/space name.txt",
+    ]) {
+      await writeFile(path.join(workspace, file), "needle\n");
+    }
+    executions = 0;
+    const fakeVm = {
+      fs: {
+        access: async (file: string, options?: { signal?: AbortSignal }) => {
+          options?.signal?.throwIfAborted();
+          await access(file);
+        },
+        stat: async (file: string, options?: { signal?: AbortSignal }) => {
+          options?.signal?.throwIfAborted();
+          return stat(file);
+        },
+        readFile: async (
+          file: string,
+          options: { encoding: "utf8"; signal?: AbortSignal },
+        ) => {
+          if (abortRead) {
+            abortRead.abort();
+            options.signal?.throwIfAborted();
+          }
+          return readFile(file, options);
+        },
+      },
+      exec: (args: string[], options: { cwd: string; signal: AbortSignal }) => {
+        executions++;
+        lastSignal = options.signal;
+        if (abortEnumeration) {
+          const controller = abortEnumeration;
+          queueMicrotask(() => controller.abort());
+        }
+        const child = spawn(args[0]!, args.slice(1), {
+          cwd: options.cwd,
+          signal: options.signal,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        const result = new Promise<{ exitCode: number }>((resolve, reject) => {
+          child.on("error", reject);
+          child.on("close", (code) => resolve({ exitCode: code ?? 1 }));
+        });
+        // Small fixtures produce no stderr; consume it to avoid blocked pipes.
+        child.stderr.resume();
+        return Object.assign(result, {
+          async *output() {
+            for await (const data of child.stdout) {
+              yield { stream: "stdout", data: Buffer.from(data) };
+            }
+          },
+        });
+      },
+    } as unknown as VM;
+    guest = createGuestTools(() => fakeVm, workspace, workspace);
+  });
+
+  after(async () => {
+    await rm(workspace, { recursive: true, force: true });
+  });
+
+  for (const name of ["find", "grep"]) {
+    const params = name === "find" ? { pattern: "*" } : { pattern: "needle" };
+    it(`${name} respects nested ignores, negations, anchored rules, and spaces outside Git repos`, async () => {
+      const output = await executeTool(guest, name, params);
+      for (const included of [
+        "keep.log",
+        "visible.txt",
+        "sub/nested.log",
+        "sub/root.txt",
+        "sub/space name.txt",
+      ]) {
+        assert.ok(output.includes(included), `missing ${included}: ${output}`);
+      }
+      for (const excluded of ["drop.log", "private.txt", "secret.txt"]) {
+        assert.ok(
+          !output.includes(excluded),
+          `unexpected ${excluded}: ${output}`,
+        );
+      }
+      assert.ok(
+        !output.split("\n").some((line) => line.startsWith("root.txt")),
+      );
+    });
+
+    it(`${name} honors parent rules when searching a subdirectory`, async () => {
+      const output = await executeTool(guest, name, { ...params, path: "sub" });
+      assert.match(output, /nested.log/);
+      assert.doesNotMatch(output, /drop.log|private.txt/);
+    });
+
+    it(`${name} does not start work when already cancelled`, async () => {
+      const controller = new AbortController();
+      controller.abort();
+      const before = executions;
+      await assert.rejects(
+        executeTool(guest, name, params, controller.signal),
+        /abort/i,
+      );
+      assert.equal(executions, before);
+    });
+
+    it(`${name} cancels an in-flight enumeration`, async () => {
+      const controller = new AbortController();
+      abortEnumeration = controller;
+      try {
+        await assert.rejects(
+          executeTool(guest, name, params, controller.signal),
+          /abort/i,
+        );
+        assert.equal(lastSignal?.aborted, true);
+        // Let the underlying adapter finish cleanup after Pi rejects find.
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      } finally {
+        abortEnumeration = undefined;
+      }
+    });
+
+    it(`${name} stops enumeration when the result limit is reached`, async () => {
+      await executeTool(guest, name, { ...params, limit: 1 });
+      assert.equal(lastSignal?.aborted, true);
+    });
+  }
+
+  it("grep propagates cancellation during a file read instead of skipping the file", async () => {
+    const controller = new AbortController();
+    abortRead = controller;
+    try {
+      await assert.rejects(
+        executeTool(guest, "grep", { pattern: "needle" }, controller.signal),
+        /abort/i,
+      );
+      assert.equal(lastSignal?.aborted, true);
+    } finally {
+      abortRead = undefined;
+    }
+  });
+
+  it("grep can still search an explicitly selected ignored file", async () => {
+    assert.match(
+      await executeTool(guest, "grep", { pattern: "needle", path: "drop.log" }),
+      /needle/,
+    );
+  });
+});
