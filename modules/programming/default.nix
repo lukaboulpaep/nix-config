@@ -6,6 +6,8 @@
 }:
 
 let
+  codex = inputs.nixpkgs-unstable.legacyPackages.${hostConfig.system}.codex;
+
   # The default llm-agents.nix build is a Bun-compiled executable. Gondolin
   # relies on Node's net implementation, so keep Pi on its supported Node
   # entry point instead.
@@ -24,7 +26,7 @@ let
 in
 {
   environment.systemPackages = [
-    pkgs.codex
+    codex
     inputs.herdr.packages.${hostConfig.system}.herdr
     pi
   ];

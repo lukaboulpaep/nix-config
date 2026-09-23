@@ -4,8 +4,8 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
-    # hyprmoncfg is not in the pinned 26.05 package set yet.
-    hyprmoncfg-nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Packages that have not reached the pinned 26.05 package set yet.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     home-manager = {
       url = "github:nix-community/home-manager/release-26.05";
