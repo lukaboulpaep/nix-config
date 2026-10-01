@@ -17,7 +17,7 @@ import type {
   ExtensionContext,
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import { createVm } from "./config/vm.ts";
+import { configureGuestGit, createVm } from "./config/vm.ts";
 import { createGuestTools } from "./tools.ts";
 
 const TEST_CONTEXT = {} as ExtensionContext;
@@ -47,6 +47,33 @@ async function executeTool(
     .map((item) => item.text)
     .join("\n");
 }
+
+describe("guest Git trust initialization", () => {
+  it("trusts only the configured workspace without shell interpolation", async () => {
+    const workspace = "/project with spaces'$(false)";
+    const vm = {
+      exec: async (args: string[], options: { cwd: string }) => {
+        assert.deepEqual(args, [
+          "/usr/bin/git", "config", "--global", "--replace-all",
+          "safe.directory", workspace,
+        ]);
+        assert.equal(options.cwd, "/");
+        return { exitCode: 0 };
+      },
+    } as unknown as Pick<VM, "exec">;
+    await configureGuestGit(vm, workspace);
+  });
+
+  it("rejects failed Git configuration", async () => {
+    const vm = {
+      exec: async () => ({ exitCode: 1, stderr: "config not writable\n" }),
+    } as unknown as Pick<VM, "exec">;
+    await assert.rejects(
+      configureGuestGit(vm, "/project"),
+      /Git trust initialization failed: config not writable/,
+    );
+  });
+});
 
 describe("when the VM is unavailable", () => {
   const guest = createGuestTools(
@@ -109,6 +136,7 @@ describe(
         workspace,
       );
       await vm.start();
+      await configureGuestGit(vm, "/project");
       guest = createGuestTools(() => vm, workspace, "/project");
     });
 
@@ -128,6 +156,18 @@ describe(
       } finally {
         delete process.env.GONDOLIN_HOST_SECRET_TEST;
       }
+    });
+
+    it("Git trusts exactly the configured guest workspace", async () => {
+      const result = await vm.exec([
+        "/usr/bin/git", "config", "--global", "--get-all", "safe.directory",
+      ]);
+      assert.equal(result.exitCode, 0);
+      assert.equal(result.stdout.trim(), "/project");
+      const status = await vm.exec([
+        "/bin/sh", "-c", "git init && git status --porcelain",
+      ], { cwd: "/project" });
+      assert.equal(status.exitCode, 0, status.stderr);
     });
 
     it("read maps an absolute host-workspace path into the guest mount", async () => {

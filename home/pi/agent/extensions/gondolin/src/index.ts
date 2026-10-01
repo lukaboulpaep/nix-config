@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { loadConfig } from "./config/config.ts";
-import { createVm } from "./config/vm.ts";
+import { configureGuestGit, createVm } from "./config/vm.ts";
 import { createGuestTools } from "./tools.ts";
 
 export default function main(pi: ExtensionAPI) {
@@ -47,6 +47,7 @@ export default function main(pi: ExtensionAPI) {
       });
       if (probe.exitCode !== 0)
         throw new Error("Gondolin workspace probe failed");
+      await configureGuestGit(vm, config.vm.workspace);
       ready = true;
       ctx.ui.setStatus("gondolin", `Gondolin: ${vm.id.slice(0, 8)}`);
     } catch (error) {

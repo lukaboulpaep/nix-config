@@ -14,6 +14,43 @@ the read-write mount. `GONDOLIN_GUEST_DIR` can explicitly override the base imag
 
 Search tools honor ignore rules and support cancellation.
 
+## GitHub pushes via the host SSH agent
+
+SSH egress is allowed only to `github.com`. Gondolin uses the `SSH_AUTH_SOCK`
+inherited by Pi to authenticate upstream; neither private keys nor the agent
+socket are mounted into the guest. HTTP access remains disabled.
+
+The existing Zsh/keychain configuration loads `~/.ssh/id_ed25519`. Before
+starting Pi, run these commands **in a host terminal**:
+
+```sh
+ssh-add -l                         # Check that your GitHub key is loaded
+ssh -T git@github.com              # Verify authentication and known_hosts
+```
+
+If necessary, load your key with `ssh-add ~/.ssh/id_ed25519`. Verify any new
+GitHub host-key fingerprint against GitHub's published fingerprints before
+accepting it. GitHub's successful `ssh -T` greeting normally exits with status 1.
+Launch Pi from that same terminal so it inherits the agent socket.
+
+Git inside the guest uses noninteractive SSH with `StrictHostKeyChecking=accept-new`
+for Gondolin's proxy key, stored only in the ephemeral guest. The real GitHub
+host key is still checked against the **host's** `~/.ssh/known_hosts` by Gondolin;
+upstream verification is not disabled. No GitHub token is required for SSH remotes.
+
+After deploying the updated Home Manager configuration, restart Pi to create a
+new VM with this allowlist. Test without pushing:
+
+```sh
+git ls-remote origin
+```
+
+VM initialization configures `safe.directory` for exactly `vm.workspace` in the
+ephemeral guest's global Git configuration before enabling tools. This handles
+the host/guest ownership difference without per-command flags, wildcard trust,
+or changes to the host's Git configuration. Initialization failures keep tools
+blocked. Restart Pi after deploying this change; existing VMs do not pick it up.
+
 ## Retired provisioning cache
 
 The old `$XDG_CACHE_HOME/pi-gondolin/toolchains` directory (normally

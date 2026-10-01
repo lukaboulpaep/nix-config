@@ -6,6 +6,6 @@
   },
   "network": {
     "httpHosts": [],
-    "sshHosts": []
+    "sshHosts": ["github.com"]
   }
 }
