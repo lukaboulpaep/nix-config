@@ -28,23 +28,21 @@
     "bash": {
       "*": "allow",
 
-      "git push*": "ask",
-      "git reset --hard*": "ask",
-      "git clean*": "ask",
-      "git restore*": "ask",
-      "git branch -D*": "ask",
-      "git branch -d*": "ask",
-      "git tag -d*": "ask",
-      "git stash drop*": "ask",
-      "git stash clear*": "ask",
-      "git remote add*": "ask",
-      "git remote remove*": "ask",
-      "git remote rm*": "ask",
-      "git remote set-url*": "ask",
-      "git commit -m * -m *": "ask",
-      "git commit --message=* --message=*": "ask",
-
-      "git commit*": "allow"
+      "*git *push*": "ask",
+      "*git *reset *--hard*": "ask",
+      "*git *clean*": "ask",
+      "*git *restore*": "ask",
+      "*git *branch *-D*": "ask",
+      "*git *branch *-d*": "ask",
+      "*git *tag *-d*": "ask",
+      "*git *stash *drop*": "ask",
+      "*git *stash *clear*": "ask",
+      "*git *remote *add*": "ask",
+      "*git *remote *remove*": "ask",
+      "*git *remote *rm*": "ask",
+      "*git *remote *set-url*": "ask",
+      "*git *commit *-m * -m *": "ask",
+      "*git *commit *--message=* --message=*": "ask"
     },
     "mcp": {
       "*": "allow"
