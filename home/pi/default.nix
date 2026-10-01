@@ -165,8 +165,9 @@ in
   # The package remains host-side trusted code; only its policy is stored under
   # extensions/pi-permission-system.
   home.file.".pi/agent/settings.json".text = builtins.toJSON {
-    defaultProvider = "openai";
-    defaultModel = "gpt-5.6-sol";
+    defaultProvider = "openai-codex";
+    defaultModel = "gpt-6.1-sol";
+    defaultThinkingLevel = "medium";
     packages = [ "npm:@gotgenes/pi-permission-system@30.0.0" ];
   };
 
