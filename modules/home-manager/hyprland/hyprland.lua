@@ -6,6 +6,7 @@ hl.on("hyprland.start", function()
 end)
 
 hl.bind("SUPER + Return", hl.dsp.exec_cmd("ghostty"))
+hl.bind("SUPER + B", hl.dsp.exec_cmd("firefox"))
 hl.bind("SUPER + Q", hl.dsp.window.close())
 hl.bind("SUPER + SHIFT + E", hl.dsp.exit())
 hl.bind("SUPER + V", hl.dsp.window.float({ action = "toggle" }))
