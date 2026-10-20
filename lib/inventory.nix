@@ -1,5 +1,4 @@
 {
-  # Personal identity is shared; the login name is selected per host.
   user = {
     name = "luka";
     fullName = "Luka Boulpaep";

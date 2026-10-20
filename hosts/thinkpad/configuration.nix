@@ -3,6 +3,7 @@
   imports = [
     ./hardware-configuration.nix
     ../../modules/nixos/base.nix
+    ../../modules/nixos/hyprland.nix
   ];
 
   users.users.${user.name} = {
@@ -12,7 +13,6 @@
     shell = pkgs.zsh;
   };
 
-  # Keep recovery tools available system-wide, including for root.
   environment.systemPackages = [ pkgs.git pkgs.curl pkgs.nano ];
 
   boot.loader.systemd-boot.enable = true;

@@ -1,6 +1,9 @@
 { user, ... }:
 {
-  imports = [ ../../modules/home-manager/development.nix ];
+  imports = [
+    ../../modules/home-manager/development.nix
+    ../../modules/home-manager/neovim.nix
+  ];
 
   home.username = user.name;
   # Compatibility baseline for this new Home Manager configuration.
