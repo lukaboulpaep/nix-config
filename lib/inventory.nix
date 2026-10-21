@@ -2,6 +2,7 @@
   user = {
     name = "luka";
     fullName = "Luka Boulpaep";
+    email = "lukaboulpaep@outlook.com";
   };
 
   nixosHosts = {

@@ -8,4 +8,14 @@
   home.username = user.name;
   # Compatibility baseline for this new Home Manager configuration.
   home.stateVersion = "26.05";
+
+  programs.ssh = {
+    enable = true;
+    enableDefaultConfig = false;
+    matchBlocks."github.com" = {
+      identityFile = "~/.ssh/id_ed25519";
+      identitiesOnly = true;
+      addKeysToAgent = "yes";
+    };
+  };
 }
