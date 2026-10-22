@@ -26,6 +26,7 @@
           useGlobalPkgs = true;
           useUserPackages = true;
           extraSpecialArgs = {
+            inherit hostConfig;
             user = inventory.user // { name = hostConfig.userName; };
             codex = nixpkgs-unstable.legacyPackages.${hostConfig.system}.codex;
           };

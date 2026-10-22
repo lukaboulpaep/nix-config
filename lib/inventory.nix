@@ -14,6 +14,7 @@
       timeZone = "Europe/Brussels";
       locale = "en_US.UTF-8";
       consoleKeyMap = "uk";
+      keyboardLayout = "gb";
     };
   };
 
