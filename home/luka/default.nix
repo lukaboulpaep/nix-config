@@ -12,10 +12,10 @@
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;
-    matchBlocks."github.com" = {
-      identityFile = "~/.ssh/id_ed25519";
-      identitiesOnly = true;
-      addKeysToAgent = "yes";
+    settings."github.com" = {
+      IdentityFile = "~/.ssh/id_ed25519";
+      IdentitiesOnly = true;
+      AddKeysToAgent = "yes";
     };
   };
 }
