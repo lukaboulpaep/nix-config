@@ -26,6 +26,8 @@
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.systemd-boot.configurationLimit = 10;
+  # The version check sees the older fallback; allow an already-current loader.
+  boot.loader.systemd-boot.graceful = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.initrd.systemd.enable = true;
 
