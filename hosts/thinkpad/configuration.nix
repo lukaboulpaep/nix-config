@@ -9,11 +9,18 @@
   users.users.${user.name} = {
     isNormalUser = true;
     description = user.fullName;
-    extraGroups = [ "wheel" "networkmanager" ];
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+    ];
     shell = pkgs.zsh;
   };
 
-  environment.systemPackages = [ pkgs.git pkgs.curl pkgs.nano ];
+  environment.systemPackages = [
+    pkgs.git
+    pkgs.curl
+    pkgs.nano
+  ];
 
   programs.ssh.startAgent = true;
 
