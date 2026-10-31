@@ -13,6 +13,9 @@
   ];
   home.homeDirectory = "/home/${user.name}";
 
+  # GUI apps may inherit a session without SSH_AUTH_SOCK after a rebuild.
+  programs.ssh.settings."github.com".IdentityAgent = "/run/user/%i/ssh-agent";
+
   # Adopt the existing profile so bookmarks, sessions and extensions stay put.
   programs.firefox.profiles.default.path = "aa52fdz5.default";
   programs.firefox.profiles.default.settings."toolkit.profiles.storeID" = "6acb618c";
