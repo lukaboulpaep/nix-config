@@ -2,7 +2,7 @@
 {
   imports = [
     ../../modules/home-manager/development.nix
-    ../../modules/home-manager/neovim.nix
+    ../../modules/home-manager/neovim/default.nix
   ];
 
   home.username = user.name;

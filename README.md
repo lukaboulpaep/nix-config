@@ -14,11 +14,15 @@ NixOS on a ThinkPad machine, with a shared Home Manager environment and a future
 ## ThinkPad
 
 Keep this repository at `/etc/nixos`; the desktop configuration links directly
-to its Hyprland, Quickshell, and asset files.
+to its Hyprland, Quickshell, Neovim, and asset files.
 
 ```sh
 sudo nixos-rebuild switch --flake .#thinkpad
 ```
+
+Neovim's `~/.config/nvim` links to `modules/home-manager/neovim/`.
+Edit `init.lua` or add Lua modules there, then restart Neovim to load changes.
+After the initial rebuild creates the link, configuration edits need no rebuild.
 
 > [!WARNING]
 > After rebuilding, you may need to restart your terminal for the SSH agent environment to take effect.

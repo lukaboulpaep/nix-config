@@ -40,6 +40,7 @@
               name = hostConfig.userName;
             };
             codex = nixpkgs-unstable.legacyPackages.${hostConfig.system}.codex;
+            neovim = nixpkgs-unstable.legacyPackages.${hostConfig.system}.neovim;
           };
           users.${hostConfig.userName} = import hostConfig.homeModule;
         };
