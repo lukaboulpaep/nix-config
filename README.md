@@ -8,9 +8,13 @@ NixOS on a ThinkPad machine, with a shared Home Manager environment and a future
 - `modules/{nixos,darwin,home-manager}/`: reusable system and application settings.
 - `home/luka/`: shared personal settings and per-host additions.
 - `lib/inventory.nix`: identity and host metadata.
-- `assets/`: profile pictures and wallpapers.
+- `lib/theme.nix`: shared desktop colors, fonts, and geometry.
+- `assets/`: fonts, profile pictures, and wallpapers.
 
 ## ThinkPad
+
+Keep this repository at `/etc/nixos`; the desktop configuration links directly
+to its Hyprland, Quickshell, and asset files.
 
 ```sh
 sudo nixos-rebuild switch --flake .#thinkpad

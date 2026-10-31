@@ -1,0 +1,12 @@
+Design reference and icon source:
+https://github.com/bflycomputer/pond-interface
+Inspected tree: df65f7e6134269dd2a67ea0f4525ff9db76942e1
+Components: shell/settings/{Style,CategoryButton,SessionButton,Window}.qml
+Icons: shell/assets/settings/*.svg and shell/assets/lock.svg
+The chevron-left.svg navigation icon is drawn locally.
+License and copyright: ../licenses/pond-interface.txt
+
+The grid is scaled down for this desktop. It retains Pond's charcoal tiles,
+12px corners, 28ms reveal staggering, 100ms hover colors and session accents.
+Pages are implemented locally for NixOS, Hyprland, PipeWire, BlueZ and UPower.
+The menu uses the bundled Onest font from assets/fonts/.

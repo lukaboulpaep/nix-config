@@ -1,5 +1,97 @@
-{ config, hostConfig, ... }:
 {
+  config,
+  hostConfig,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  barRunner = pkgs.writeShellApplication {
+    name = "desktop-bar";
+    runtimeInputs = [
+      config.programs.quickshell.package
+      pkgs.systemd
+      pkgs.coreutils
+    ];
+    text = builtins.readFile ./desktop-bar.sh;
+  };
+  startBar = pkgs.writeShellApplication {
+    name = "desktop-bar-start";
+    runtimeInputs = [ pkgs.systemd ];
+    text = ''
+      systemctl --user import-environment WAYLAND_DISPLAY DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP
+      systemctl --user start quickshell.service
+    '';
+  };
+in
+{
+  imports = [ ../desktop-theme.nix ];
+
+  home.packages = [
+    barRunner
+    startBar
+  ];
+  programs.quickshell.enable = true;
+  systemd.user.services.quickshell = {
+    Unit.Description = "Desktop bar with NetworkManager recovery";
+    Service = {
+      ExecStart = lib.getExe barRunner;
+      Restart = "on-failure";
+      RestartSec = 2;
+      # Stop the whole process group, including Quickshell's crash recovery.
+      KillMode = "control-group";
+      TimeoutStopSec = 3;
+    };
+  };
+
+  xdg.dataFile."fonts/Onest.ttf".source =
+    config.lib.file.mkOutOfStoreSymlink "/etc/nixos/assets/fonts/Onest.ttf";
+
+  programs.hyprlock = {
+    enable = true;
+    settings = {
+      general.hide_cursor = true;
+      background = [
+        {
+          path = "screenshot";
+          blur_passes = 3;
+          brightness = 0.6;
+        }
+      ];
+      label = [
+        {
+          text = "$USER";
+          font_family = "Onest";
+          font_size = 22;
+          color = "rgb(f8f9f9)";
+          position = "0, 40";
+          halign = "center";
+          valign = "center";
+        }
+      ];
+      input-field = [
+        {
+          size = "260, 48";
+          position = "0, -40";
+          halign = "center";
+          valign = "center";
+          outline_thickness = 0;
+          rounding = 12;
+          inner_color = "rgba(1d1d1dee)";
+          font_color = "rgb(f8f9f9)";
+          font_family = "Onest";
+          placeholder_text = "Password";
+          fail_text = "Try again";
+          dots_center = true;
+        }
+      ];
+    };
+  };
+
+  # Link the directory so saves that replace files also trigger a reload.
+  xdg.configFile."quickshell".source =
+    config.lib.file.mkOutOfStoreSymlink "/etc/nixos/modules/home-manager/hyprland/quickshell";
+
   xdg.configFile."hypr/hyprland.lua".source =
     config.lib.file.mkOutOfStoreSymlink "/etc/nixos/modules/home-manager/hyprland/hyprland.lua";
 
@@ -8,6 +100,8 @@
     -- Change machine preferences in /etc/nixos/lib/inventory.nix instead.
     return {
         keyboardLayout = ${builtins.toJSON hostConfig.keyboardLayout},
+        shellCommand = ${builtins.toJSON (lib.getExe startBar)},
+        theme = ${lib.generators.toLua { } (import ../../../lib/theme.nix)},
     }
   '';
 }
