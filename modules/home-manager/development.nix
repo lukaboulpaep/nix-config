@@ -1,6 +1,14 @@
-{ codex, user, ... }:
 {
-  home.packages = [ codex ];
+  codex,
+  pkgs,
+  user,
+  ...
+}:
+{
+  home.packages = [
+    codex
+    pkgs.lazygit
+  ];
 
   programs.git = {
     enable = true;
