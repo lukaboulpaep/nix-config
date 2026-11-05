@@ -671,6 +671,20 @@ class Controller:
         self.apply(desired, trial=False, restore_workspaces="workspaces" in desired)
         self.emit()
 
+    def restore_startup_layout(self):
+        if self.lid_snapshot or not self.displays:
+            return
+        desired = remembered_layout(self.config, self.displays)
+        if desired is None:
+            if not self.config.get("configured"):
+                return
+            desired = arranged(self.displays, primary_for(self.displays, self.config.get("externalMain", False)))
+        # Matching geometry says nothing about live workspace rules or owners.
+        # At login Hyprland may have assigned workspace 2 to the laptop already.
+        # Restore saved placements even when self.layout looks identical, and
+        # never capture those initial assignments as user overrides.
+        self.apply(desired, trial=False, restore_workspaces=True)
+
     def handle(self, request):
         action = request.get("action")
         self.error = ""
@@ -751,12 +765,10 @@ def serve():
             restore(pending["before"])
             (directory / "pending.json").unlink(missing_ok=True)
         controller.refresh()
-    saved = remembered_layout(controller.config, controller.displays)
-    if not controller.lid_snapshot and saved and saved != controller.layout:
-        try:
-            controller.apply(saved, trial=False, restore_workspaces="workspaces" in saved)
-        except Exception as e:
-            controller.error = str(e)
+    try:
+        controller.restore_startup_layout()
+    except Exception as e:
+        controller.error = str(e)
     controller.emit()
     events = None
     event_buffer = b""

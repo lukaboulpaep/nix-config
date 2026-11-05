@@ -416,6 +416,62 @@ class TransactionTests(unittest.TestCase):
             self.controller.reconnect()
             self.assertEqual(apply.call_args.args[0]["primary"], "eDP-1")
 
+    def test_startup_restores_workspace_owners_when_saved_layout_already_matches(self):
+        layout = mod.arranged(self.displays, "DP-9")
+        layout["workspaces"] = {"10": "eDP-1", "7": "eDP-1"}
+        self.controller.config.update(configured=True, externalMain=True, primary="DP-9",
+                                      layouts={self.controller.key(): layout})
+        self.controller.persist()
+        controller = mod.Controller(self.controller.path)
+        self.assertEqual(controller.layout, layout)
+        # Geometry and cached placements match, but compositor assignments and
+        # workspace rules still need restoring after login.
+        workspaces = [{"id": 1, "monitor": "DP-9", "windows": 1},
+                      {"id": 2, "monitor": "eDP-1", "windows": 1}]
+        def compositor(*args):
+            if args == ("-j", "workspaces"):
+                return json.dumps(workspaces)
+            return "[]" if args[0] == "-j" else "ok"
+        with patch.object(mod, "hypr", side_effect=compositor) as hypr:
+            controller.restore_startup_layout()
+        code = "\n".join(call.args[1] for call in hypr.call_args_list if call.args[0] == "eval")
+        self.assertIn('hl.workspace_rule({["workspace"]="2",["monitor"]="DP-9"', code)
+        self.assertIn('hl.dsp.workspace.move({["workspace"]="2",["monitor"]="DP-9"})', code)
+        self.assertEqual(controller.layout["workspaces"], layout["workspaces"])
+        self.assertIsNone(controller.pending)
+
+    def test_startup_legacy_layout_does_not_save_initial_workspace_as_override(self):
+        layout = mod.arranged(self.displays, "DP-9")
+        self.controller.config.update(configured=True, primary="DP-9",
+                                      layouts={self.controller.key(): layout})
+        self.controller.layout = mod.current_layout(self.displays, "DP-9")
+        workspaces = [{"id": 1, "monitor": "DP-9", "windows": 1},
+                      {"id": 2, "monitor": "eDP-1", "windows": 0}]
+        def compositor(*args):
+            if args == ("-j", "workspaces"):
+                return json.dumps(workspaces)
+            return "[]" if args[0] == "-j" else "ok"
+        with patch.object(mod, "hypr", side_effect=compositor), patch.object(mod, "place_workspaces") as place:
+            self.controller.restore_startup_layout()
+        self.assertEqual(place.call_args.args[0]["2"], "DP-9")
+        self.assertEqual(self.controller.layout["workspaces"], {"10": "eDP-1"})
+
+    def test_startup_without_saved_layout_uses_connection_preference(self):
+        self.controller.config.update(configured=True, externalMain=True)
+        with patch.object(self.controller, "apply") as apply:
+            self.controller.restore_startup_layout()
+        self.assertEqual(apply.call_args.args[0]["primary"], "DP-9")
+        self.assertEqual(apply.call_args.kwargs, {"trial": False, "restore_workspaces": True})
+
+    def test_startup_leaves_unconfigured_or_closed_lid_layout_alone(self):
+        with patch.object(self.controller, "apply") as apply:
+            self.controller.restore_startup_layout()
+            apply.assert_not_called()
+            self.controller.config.update(configured=True, externalMain=True)
+            self.controller.lid_snapshot = {"displays": self.displays}
+            self.controller.restore_startup_layout()
+            apply.assert_not_called()
+
     def test_named_layout_requires_matching_displays(self):
         self.controller.handle({"action": "save", "name": "Desk"})
         profile = self.controller.config["profiles"][0]
