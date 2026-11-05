@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
-"""Display layouts for the desktop panel; JSON-lines IPC and timed rollback."""
+"""Backend for Quickshell's display menu, launched by desktop-displays.
+
+The menu exchanges JSON lines with this process. It uses hyprctl to apply
+monitor/workspace layouts, handles docking and lid changes, and runs a separate
+watchdog so an unconfirmed layout can revert even if the panel stops responding.
+
+Persistent state: $XDG_STATE_HOME/desktop-displays/settings.json (by default
+~/.local/state/desktop-displays/settings.json). Contains named profiles, confirmed
+layouts per display set, workspace placements, and the external-main preference.
+
+Session state: $XDG_RUNTIME_DIR/desktop-displays-<uid>-<session-hash>/ holds
+pending.json for rollback, lid.json for restoring an open-lid layout, and locks.
+$XDG_RUNTIME_DIR/hypr/<instance>/desktop-monitors.lua preserves live monitor
+settings across Hyprland config reloads. These runtime files are not presets.
+tests/test_displays.py tests the layout rules and transactions with mocked IPC.
+"""
 import copy
 import fcntl
 import hashlib
