@@ -19,6 +19,7 @@ def display(name, internal=False, x=0, width=1920, height=1080):
 
 class LayoutTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.dict(mod.os.environ, {"HYPRLAND_INSTANCE_SIGNATURE": ""}))
         self.displays = [display("eDP-2", True, width=1440, height=900), display("DP-7", x=1440)]
 
     def test_connection_policy_is_generic_and_falls_back(self):
@@ -215,8 +216,33 @@ class LayoutTests(unittest.TestCase):
         self.assertIn("13", targets)
 
 
+class ReloadTests(unittest.TestCase):
+    def test_monitor_snapshot_keeps_closed_lid_and_layout_and_is_replaced(self):
+        with tempfile.TemporaryDirectory() as runtime:
+            directory = Path(runtime) / "hypr" / "test-session"
+            directory.mkdir(parents=True)
+            displays = [display("eDP-1", True), display("DP-5", x=1440)]
+            displays[0]["disabled"] = True
+            with patch.dict(mod.os.environ, {"XDG_RUNTIME_DIR": runtime,
+                                             "HYPRLAND_INSTANCE_SIGNATURE": "test-session"}), \
+                 patch.object(mod, "monitors", return_value=displays):
+                mod.save_monitor_rules()
+                rules = (directory / "desktop-monitors.lua").read_text().splitlines()
+                self.assertIn('["output"]="eDP-1"', rules[0])
+                self.assertIn('["disabled"]=true', rules[0])
+                self.assertIn('["position"]="1440x0"', rules[1])
+                displays[0]["disabled"] = False
+                displays[1]["mirror"] = "eDP-1"
+                mod.save_monitor_rules()
+                rules = (directory / "desktop-monitors.lua").read_text()
+                self.assertNotIn('["disabled"]=true', rules)
+                self.assertIn('["mirror"]="eDP-1"', rules)
+                self.assertFalse((directory / "desktop-monitors.tmp").exists())
+
+
 class TransactionTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.dict(mod.os.environ, {"HYPRLAND_INSTANCE_SIGNATURE": ""}))
         self.temp = tempfile.TemporaryDirectory()
         self.directory = Path(self.temp.name)
         self.displays = [display("eDP-1", True), display("DP-9", x=1920)]
@@ -301,6 +327,31 @@ class TransactionTests(unittest.TestCase):
              patch.object(self.controller, "emit"):
             self.assertTrue(self.controller.sync_lid())
             restore.assert_called_once()
+
+    def test_resume_without_outputs_keeps_snapshot_until_panel_returns(self):
+        self.close_lid()
+        panel = copy.deepcopy(self.displays[0])
+        self.displays = []
+        with patch.object(mod, "lid_closed", return_value=False), \
+             patch.object(self.controller, "emit"):
+            with self.assertRaisesRegex(RuntimeError, "Waiting for a display"):
+                self.controller.sync_lid()
+            self.assertIsNotNone(self.controller.lid_snapshot)
+            self.assertTrue((self.directory / "lid.json").exists())
+
+            # The connector has returned, but enabling it has not completed.
+            self.displays = [panel]
+            with self.assertRaisesRegex(RuntimeError, "finish restoring"):
+                self.controller.sync_lid()
+            self.assertIsNotNone(self.controller.lid_snapshot)
+            self.assertTrue((self.directory / "lid.json").exists())
+
+            def enable_panel(_):
+                self.displays[0]["disabled"] = False
+            with patch.object(mod, "apply_rules", side_effect=enable_panel):
+                self.assertTrue(self.controller.sync_lid())
+            self.assertIsNone(self.controller.lid_snapshot)
+            self.assertFalse((self.directory / "lid.json").exists())
 
     def test_reload_while_closed_preserves_original_snapshot(self):
         self.close_lid()

@@ -331,6 +331,23 @@ def place_workspaces(targets, workspaces, active=None, defaults=None):
         hypr("eval", "\n".join(lines))
 
 
+def save_monitor_rules():
+    # Session-local: a later login must discover its own outputs. Loading these
+    # rules with the main config prevents a reload from waking a closed laptop.
+    instance = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if not instance or not runtime:
+        return
+    path = Path(runtime) / "hypr" / instance / "desktop-monitors.lua"
+    code = []
+    for d in monitors():
+        mirror = d["mirror"] if d["mirror"] not in ("none", "", None) else ""
+        code.append("hl.monitor(" + lua(monitor_spec(d, d, mirror, d["disabled"])) + ")")
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text("\n".join(code) + "\n")
+    temporary.replace(path)
+
+
 def apply_rules(code):
     # Hyprland 0.55 can arrange layer surfaces using the previous output origin
     # when moving/mirroring a monitor. A second IPC pass, after the first request
@@ -338,10 +355,15 @@ def apply_rules(code):
     # Keep the existing surfaces: unmapping them would expose the fallback image.
     hypr("eval", code)
     hypr("eval", code)
+    save_monitor_rules()
 
 
 def restore(snapshot):
     available = {d["name"] for d in monitors()}
+    if not available:
+        # Outputs can disappear briefly while resuming without the dock.
+        # Keep the lid snapshot so sync_lid retries when the panel returns.
+        raise RuntimeError("Waiting for a display to return before restoring the layout.")
     previous = [d for d in snapshot["displays"] if d["name"] in available]
     # Bring source outputs back before restoring mirrors.
     previous.sort(key=lambda d: d["mirror"] not in ("none", "", None))
@@ -362,6 +384,11 @@ def restore(snapshot):
     code.extend("hl.workspace_rule(" + lua(rule) + ")" for rule in rules)
     apply_rules("\n".join(code))
     time.sleep(0.25)
+    restored = monitors()
+    enabled = {d["name"] for d in restored if not d["disabled"]}
+    expected = {d["name"] for d in previous if not d["disabled"]}
+    if not enabled or not expected.issubset(enabled):
+        raise RuntimeError("Waiting for the display layout to finish restoring.")
     moves = []
     for w in snapshot.get("workspaces", []):
         key = workspace_key(w)
@@ -715,6 +742,7 @@ def serve():
         print(json.dumps({"event": "error", "error": "Display controls are already running."}), flush=True)
         return
     controller = Controller()
+    save_monitor_rules()
     # Recover an interrupted trial before restoring any confirmed layout.
     pending = read_json(directory / "pending.json", {})
     if pending:

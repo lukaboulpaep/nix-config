@@ -22,6 +22,16 @@ hl.on("hyprland.start", function()
 end)
 
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
+-- Keep the display helper's live layout through reloads, including a closed lid.
+-- Otherwise the fallback rule re-enables the laptop and steals a workspace.
+local runtimeDir = os.getenv("XDG_RUNTIME_DIR")
+local instance = os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
+if runtimeDir and instance then
+    local monitorRules = loadfile(runtimeDir .. "/hypr/" .. instance .. "/desktop-monitors.lua")
+    if monitorRules then
+        monitorRules()
+    end
+end
 hl.config({
     misc = { font_family = theme.fonts.ui },
     binds = {
