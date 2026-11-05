@@ -1,3 +1,5 @@
+require("config.review-repository").setup()
+
 require("codediff").setup({
   highlights = {
     line_insert = "DiffAdd",

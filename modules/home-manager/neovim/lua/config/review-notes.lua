@@ -123,9 +123,11 @@ local function refresh()
 end
 
 function M.edit(note, done)
+  local repository = require("config.review-repository")
+  local root = repository.owner(note)
   require("review.popup").open(note.type, note.text, function(kind, text)
     if kind and text then
-      require("review.store").update(note.id, text, kind)
+      repository.with_root(root, require("review.store").update, note.id, text, kind)
       refresh()
     end
     if done then done() end
@@ -133,7 +135,8 @@ function M.edit(note, done)
 end
 
 function M.delete(note)
-  require("review.store").delete(note.id)
+  local repository = require("config.review-repository")
+  repository.with_root(repository.owner(note), require("review.store").delete, note.id)
   refresh()
 end
 
@@ -145,6 +148,8 @@ function M.archive()
 end
 
 local function add(kind, first, last, selection)
+  local repository = require("config.review-repository")
+  local root = repository.root()
   local buf = vim.api.nvim_get_current_buf()
   local file, line, side = require("review.hooks").get_cursor_position()
   if not file then return end
@@ -154,10 +159,12 @@ local function add(kind, first, last, selection)
     vim.api.nvim_buf_get_lines(buf, 0, -1, false))
   require("review.popup").open(kind or "note", nil, function(comment_type, text)
     if not comment_type or not text then return end
-    local note = require("review.store").add(file, first, comment_type, text, last, side)
-    note.selection, note.revision, note.comparison = selection, metadata.revision, metadata.comparison
-    note.source_hash = source and vim.fn.sha256(source) or nil
-    persist()
+    repository.with_root(root, function()
+      local note = require("review.store").add(file, first, comment_type, text, last, side)
+      note.selection, note.revision, note.comparison = selection, metadata.revision, metadata.comparison
+      note.source_hash = source and vim.fn.sha256(source) or nil
+      persist()
+    end)
     refresh()
   end)
 end
@@ -218,6 +225,7 @@ function M.at_cursor(callback, file_only)
 end
 
 local function sync(buf)
+  require("config.review-repository").ensure()
   local changed = false
   for id, mark in pairs(tracked[buf] or {}) do
     local note = require("review.store").get(id)
@@ -303,6 +311,7 @@ function M.setup()
   end
   local sync_positions = marks.sync_positions
   marks.sync_positions = function(buf)
+    require("config.review-repository").ensure()
     local moved = sync_positions(buf)
     sync(buf)
     return moved

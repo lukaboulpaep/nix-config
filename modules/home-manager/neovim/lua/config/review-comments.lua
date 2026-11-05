@@ -3,17 +3,20 @@ local notes = require("config.review-notes")
 
 -- Telescope lists notes with their selection and revision context. The full
 -- Markdown comment stays readable in the preview pane.
-local function select_comment(items, on_choice, query)
+local function select_comment(items, on_choice, query, root)
+  local repository = require("config.review-repository")
+  root = root or repository.root()
   local actions = require("telescope.actions")
   local state = require("telescope.actions.state")
   local allowed = {}
   for _, item in ipairs(items) do allowed[item.comment.id] = true end
   local function finder()
     return require("telescope.finders").new_table({
-      results = vim.tbl_filter(function(note) return allowed[note.id] end, notes.list()),
+      results = vim.tbl_filter(function(note) return allowed[note.id] end,
+        repository.with_root(root, notes.list)),
       entry_maker = function(comment)
         local info = require("review.config").get().comment_types[comment.type]
-        local location, status = notes.location(comment), notes.status(comment)
+        local location, status = notes.location(comment), repository.with_root(root, notes.status, comment)
         local revision = comment.revision and (" @" .. comment.revision:sub(1, 10)) or ""
         local display = string.format("%s %s%s [%s, %s%s] %s", info.icon, location, revision,
           comment.type, comment.side or "new", status ~= "" and (", " .. status) or "", comment.text):gsub("%s+", " ")
@@ -22,7 +25,7 @@ local function select_comment(items, on_choice, query)
     })
   end
   require("telescope.pickers").new({}, {
-    prompt_title = "Review notes",
+    prompt_title = "Review notes · " .. (root and vim.fn.fnamemodify(root, ":t") or "No repository"),
     layout_strategy = "vertical",
     layout_config = { width = 0.9, height = 0.9, preview_height = 0.6, preview_cutoff = 1 },
     results_title = "Ctrl-e: edit · Ctrl-d: delete",
@@ -36,7 +39,7 @@ local function select_comment(items, on_choice, query)
         local lines = { notes.location(comment) .. " · " .. comment.type .. " · " .. (comment.side or "new") .. " side",
           "" }
         if comment.revision then vim.list_extend(lines, { "Snapshot: " .. comment.revision, "" }) end
-        local status = notes.status(comment)
+        local status = repository.with_root(root, notes.status, comment)
         if status ~= "" then vim.list_extend(lines, { "Status: " .. status, "" }) end
         if comment.selection then
           vim.list_extend(lines, { "Selected code:", "" })
@@ -70,7 +73,7 @@ local function select_comment(items, on_choice, query)
           -- The popup restores its previous window after 10ms. Reopen after
           -- that so it cannot steal focus from Telescope on save or cancel.
           vim.defer_fn(function()
-            select_comment(items, on_choice, prompt)
+            select_comment(items, on_choice, prompt, root)
           end, 20)
         end)
       end
@@ -84,7 +87,7 @@ local function select_comment(items, on_choice, query)
         local entry = state.get_selected_entry()
         actions.close(prompt_bufnr)
         if entry then
-          on_choice(entry.value)
+          repository.with_root(root, on_choice, entry.value)
         end
       end)
       return true
