@@ -10,6 +10,8 @@
     pkgs.lazygit
   ];
 
+  home.file.".codex/AGENTS.md".source = ./agents/AGENTS.md;
+
   programs.git = {
     enable = true;
     settings = {
