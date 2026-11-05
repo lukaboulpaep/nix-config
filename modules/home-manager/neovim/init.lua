@@ -1,1 +1,7 @@
-print("hello world");
+require("config.options")
+require("config.plugins")
+require("config.theme").setup()
+require("config.statusline")
+require("config.keymaps")
+require("config.lsp")
+require("config.treesitter")
