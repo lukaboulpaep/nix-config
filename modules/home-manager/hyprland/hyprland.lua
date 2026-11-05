@@ -33,7 +33,13 @@ if runtimeDir and instance then
     end
 end
 hl.config({
-    misc = { font_family = theme.fonts.ui },
+    misc = {
+        font_family = theme.fonts.ui,
+        -- Use the saved theme while Quickshell loads the wallpaper.
+        disable_hyprland_logo = true,
+        disable_splash_rendering = true,
+        background_color = palette.background,
+    },
     binds = {
         -- Alt navigation and window moves stay on the current monitor.
         window_direction_monitor_fallback = false,
