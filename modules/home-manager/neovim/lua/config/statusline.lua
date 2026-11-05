@@ -68,6 +68,8 @@ require("lualine").setup({
     },
     lualine_c = {
       { "filename", path = 1 },
+      { require("config.review-comments").file_note_count, color = "ReviewNote",
+        on_click = function() require("config.review-comments").list_file() end },
       { "diagnostics", sources = { "nvim_diagnostic" } },
     },
     lualine_x = { { language_servers, color = "Comment" }, "filetype" },

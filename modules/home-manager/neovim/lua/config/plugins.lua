@@ -6,6 +6,8 @@ vim.pack.add({
   { src = "https://github.com/lewis6991/gitsigns.nvim" },
   { src = "https://github.com/nvim-telescope/telescope.nvim" },
   { src = "https://github.com/nvim-lualine/lualine.nvim" },
+  { src = "https://github.com/esmuellert/codediff.nvim" },
+  { src = "https://github.com/georgeguimaraes/review.nvim" },
   {
     src = "https://github.com/akinsho/bufferline.nvim",
     version = vim.version.range("4"),
@@ -20,3 +22,4 @@ require("config.neo-tree")
 require("config.git")
 require("config.buffers")
 require("config.search")
+require("config.review")
