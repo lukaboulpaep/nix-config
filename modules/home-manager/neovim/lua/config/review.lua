@@ -6,7 +6,13 @@ require("codediff").setup({
     char_delete = "DesktopDiffDeleteText",
   },
   diff = { layout = "side-by-side", filler_text = "" },
-  explorer = { width = 32, focus_on_select = true },
+  explorer = {
+    width = 32,
+    focus_on_select = true,
+    view_mode = "tree",
+    -- Keep each folder level visible, matching Neo-tree's directory structure.
+    flatten_dirs = false,
+  },
   keymaps = {
     view = {
       focus_explorer = "<leader>rb",
