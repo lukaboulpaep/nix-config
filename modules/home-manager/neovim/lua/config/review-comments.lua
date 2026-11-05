@@ -23,6 +23,8 @@ local function select_comment(items, on_choice, query)
   end
   require("telescope.pickers").new({}, {
     prompt_title = "Review notes",
+    layout_strategy = "vertical",
+    layout_config = { width = 0.9, height = 0.9, preview_height = 0.6, preview_cutoff = 1 },
     results_title = "Ctrl-e: edit · Ctrl-d: delete",
     default_text = query,
     finder = finder(),
@@ -44,6 +46,7 @@ local function select_comment(items, on_choice, query)
         vim.list_extend(lines, vim.split(comment.text, "\n", { plain = true }))
         vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
         require("telescope.previewers.utils").highlighter(self.state.bufnr, "markdown")
+        require("config.review-reading").wrap_window(self.state.winid)
       end,
     }),
     attach_mappings = function(prompt_bufnr, map)
@@ -125,6 +128,7 @@ function M.setup()
     if vim.bo[buf].filetype ~= "markdown" or vim.api.nvim_win_get_config(0).relative == "" then
       return
     end
+    require("config.review-reading").wrap_window(vim.api.nvim_get_current_win())
     local submit = vim.fn.maparg("<C-s>", "n", false, true).callback
     local cancel = vim.fn.maparg("<C-q>", "n", false, true).callback
     -- Esc returns to normal mode; repeating it must not discard the draft.

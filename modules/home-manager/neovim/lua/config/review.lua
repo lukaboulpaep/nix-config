@@ -55,6 +55,7 @@ require("review").setup({
 })
 
 require("config.review-comments").setup()
+require("config.review-reading").setup()
 require("config.review-export").setup()
 require("config.review-navigation").setup()
 require("config.review-commits").setup()

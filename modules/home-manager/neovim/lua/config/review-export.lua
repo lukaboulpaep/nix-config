@@ -129,7 +129,7 @@ local function edit(audience, action, snapshot)
     title_pos = "center",
   })
   vim.bo[buf].filetype = "markdown"
-  vim.wo[win].wrap = true
+  require("config.review-reading").wrap_window(win)
   vim.cmd.stopinsert()
   local function close()
     vim.cmd.stopinsert()
@@ -159,6 +159,8 @@ local function pick(title, entries, preview, selected)
   local actions, state = require("telescope.actions"), require("telescope.actions.state")
   require("telescope.pickers").new({}, {
     prompt_title = title,
+    layout_strategy = "vertical",
+    layout_config = { width = 0.9, height = 0.9, preview_height = 0.6, preview_cutoff = 1 },
     finder = require("telescope.finders").new_table({
       results = entries,
       entry_maker = function(entry)
@@ -172,6 +174,7 @@ local function pick(title, entries, preview, selected)
         vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false,
           vim.split(preview(entry.value), "\n", { plain = true }))
         require("telescope.previewers.utils").highlighter(self.state.bufnr, "markdown")
+        require("config.review-reading").wrap_window(self.state.winid)
       end,
     }),
     attach_mappings = function(prompt_bufnr)
